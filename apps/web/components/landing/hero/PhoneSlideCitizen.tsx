@@ -29,7 +29,7 @@ export function PhoneSlideCitizen() {
         </p>
 
         <div className="mt-auto w-full">
-          <button className="w-full h-12 rounded-full bg-[var(--red)]/10 text-[var(--red)] border border-[var(--red)]/20 font-medium hover:bg-[var(--red)]/20 transition-colors flex items-center justify-center gap-2">
+          <button className="w-full h-12 rounded-full bg-[var(--red)]/10 text-[var(--red)] border border-[var(--red)]/20 font-medium interactive-tactile flex items-center justify-center gap-2 hover:bg-[var(--red)]/15">
             <LuFlame className="w-4 h-4" />
             Report burning
           </button>

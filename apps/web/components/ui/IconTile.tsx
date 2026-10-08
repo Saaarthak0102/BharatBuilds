@@ -15,8 +15,7 @@ export const IconTile = React.forwardRef<HTMLButtonElement, IconTileProps>(
       <button
         ref={ref}
         className={cn(
-          "glass-card flex flex-col items-start justify-between p-4 text-left transition-all duration-300",
-          "hover:-translate-y-1 hover:bg-white/5",
+          "glass-card flex flex-col items-start justify-between p-4 text-left interactive-card",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
           "h-full w-full",
           className

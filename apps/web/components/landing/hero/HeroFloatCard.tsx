@@ -16,7 +16,6 @@ export const HeroFloatCard = React.forwardRef<HTMLDivElement, HeroFloatCardProps
         ref={ref}
         className={cn(
           "hero-float-card glass-card p-4 md:p-5 transition-all duration-300",
-          "hover:-translate-y-1 hover:brightness-110",
           tilt === "left" ? "-rotate-2" : "rotate-2",
           className
         )}

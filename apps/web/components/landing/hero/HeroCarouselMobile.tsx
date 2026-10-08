@@ -43,8 +43,8 @@ export function HeroCarouselMobile({ className }: { className?: string }) {
             key={i}
             onClick={() => scrollTo(i)}
             className={cn(
-              "w-2 h-2 rounded-full transition-all duration-300",
-              activeIndex === i ? "bg-[var(--text-hi)] w-4" : "bg-[var(--border-strong)]"
+              "w-2 h-2 rounded-full interactive-quiet",
+              activeIndex === i ? "bg-[var(--text-hi)] w-4" : "bg-[var(--border-strong)] hover:bg-[var(--text-mid)]"
             )}
           />
         ))}

@@ -40,7 +40,7 @@ export function PhoneSlideFarmer() {
         </p>
 
         <div className="mt-auto">
-          <button className="w-full h-12 rounded-full bg-[var(--emerald)] text-black font-medium hover:bg-emerald-400 transition-colors flex items-center justify-center gap-2 mb-4">
+          <button className="w-full h-12 rounded-full bg-[var(--emerald)] text-black font-medium interactive-tactile flex items-center justify-center gap-2 mb-4 hover:brightness-105">
             Open planner
           </button>
           

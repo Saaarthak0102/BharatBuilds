@@ -50,8 +50,8 @@ export function BLCard() {
       <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider mb-1">Machines free nearby</div>
       <div className="flex items-end justify-between">
         <div className="font-serif italic text-4xl text-[var(--text-hi)] leading-none">{heroMock.stats.machinesNearby}</div>
-        <button className="w-7 h-7 rounded-full bg-[var(--bg-2)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--bg-3)] transition-colors shrink-0 mb-0.5">
-          <LuArrowUpRight className="w-3.5 h-3.5 text-[var(--text-hi)]" />
+        <button className="w-7 h-7 rounded-full bg-[var(--bg-2)] border border-[var(--border-strong)] flex items-center justify-center shrink-0 mb-0.5 interactive-tactile text-[var(--text-hi)] hover:bg-[var(--bg-3)]">
+          <LuArrowUpRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </HeroFloatCard>

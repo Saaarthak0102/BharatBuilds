@@ -4,14 +4,16 @@ import { useRef } from 'react';
 import { useReveal } from '@/lib/motion/useReveal';
 import { Card } from '../ui/Card';
 
+import { LuCalendar, LuTractor, LuWind } from 'react-icons/lu';
+
 export function HowItWorks() {
   const ref = useRef<HTMLDivElement>(null);
   useReveal(ref, { stagger: 0.2 });
 
   const steps = [
-    { title: 'Farmer uses planner', desc: 'Agent finds best day based on weather & wind', icon: '📅' },
-    { title: 'Machine is booked', desc: 'No burning needed, residue is managed', icon: '🚜' },
-    { title: 'Delhi breathes easier', desc: 'Citizens check AQI and report issues', icon: '🌬️' }
+    { title: 'Farmer uses planner', desc: 'Agent finds best day based on weather & wind', icon: <LuCalendar /> },
+    { title: 'Machine is booked', desc: 'No burning needed, residue is managed', icon: <LuTractor /> },
+    { title: 'Delhi breathes easier', desc: 'Citizens check AQI and report issues', icon: <LuWind /> }
   ];
 
   return (

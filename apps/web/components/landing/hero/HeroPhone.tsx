@@ -62,7 +62,7 @@ export function HeroPhone({ className }: { className?: string }) {
           <button
             key={index}
             className={cn(
-              "w-2 h-2 rounded-full transition-all duration-300",
+              "w-2 h-2 rounded-full interactive-quiet",
               activeSlide === index ? "bg-[var(--text-hi)] w-4" : "bg-[var(--text-mid)]/40 hover:bg-[var(--text-mid)]"
             )}
             onClick={() => setActiveSlide(index)}

@@ -100,14 +100,14 @@ export function Hero() {
         {/* ================================================== */}
         <div className="text-center flex flex-col items-center z-30 shrink-0">
           <h1 className="font-serif text-4xl md:text-5xl lg:text-[56px] xl:text-[64px] tracking-tight leading-[1] mb-4 flex flex-col items-center">
-            <span className="hero-headline-line text-[var(--text-hi)] not-italic">From field to Delhi,</span>
+            <span className="hero-headline-line text-[var(--text-hi)] not-italic">From fields to Delhi,</span>
             <span className="hero-headline-line italic bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent pb-1">
               one good decision at a time.
             </span>
           </h1>
           
           <p className="hero-subtitle text-[16px] md:text-[18px] text-[var(--text-mid)] max-w-2xl mb-6 text-balance leading-snug">
-            Farmers find the best day to clear their field without burning. Delhi sees the air, and reports the smoke.
+            Farmers find the best day to clear their fields without burning. Delhi sees the air, and reports the smoke.
           </p>
 
           <div className="hero-ctas flex flex-col sm:flex-row items-center justify-center gap-4">
