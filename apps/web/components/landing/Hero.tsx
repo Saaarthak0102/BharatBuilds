@@ -7,7 +7,6 @@ import { HeroPhone } from "./hero/HeroPhone";
 import { HeroArc } from "./hero/HeroArc";
 import { TLCard, TLPill, BLCard, TRCard, BRCard } from "./hero/HeroCards";
 import { HeroCarouselMobile } from "./hero/HeroCarouselMobile";
-import { AwsMarquee } from "./AwsMarquee";
 import { useGSAP, gsap } from "@/lib/motion/gsap";
 
 export function Hero() {
@@ -92,24 +91,26 @@ export function Hero() {
   return (
     <section 
       ref={containerRef} 
-      className="relative w-full overflow-hidden min-h-[100svh] flex flex-col pt-32 lg:pt-40"
+      className="relative w-full overflow-hidden h-[100svh] max-h-[1000px] min-h-[700px] flex flex-col pt-20 lg:pt-24"
     >
-      <div className="max-w-[1200px] w-full mx-auto px-4 flex flex-col items-center relative z-10">
+      <div className="max-w-[1200px] w-full mx-auto px-4 flex flex-col items-center relative z-10 h-full">
         
-        {/* TEXT CONTENT */}
-        <div className="text-center flex flex-col items-center z-30">
-          <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl xl:text-[80px] tracking-tight leading-[1.1] mb-6 flex flex-col items-center">
+        {/* ================================================== */}
+        {/* ZONE A — TEXT / CTA */}
+        {/* ================================================== */}
+        <div className="text-center flex flex-col items-center z-30 shrink-0">
+          <h1 className="font-serif text-4xl md:text-5xl lg:text-[56px] xl:text-[64px] tracking-tight leading-[1] mb-4 flex flex-col items-center">
             <span className="hero-headline-line text-[var(--text-hi)] not-italic">From field to Delhi,</span>
-            <span className="hero-headline-line italic bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent pb-2">
+            <span className="hero-headline-line italic bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent pb-1">
               one good decision at a time.
             </span>
           </h1>
           
-          <p className="hero-subtitle text-base md:text-lg text-[var(--text-mid)] max-w-2xl mb-10 text-balance">
+          <p className="hero-subtitle text-[16px] md:text-[18px] text-[var(--text-mid)] max-w-2xl mb-6 text-balance leading-snug">
             Farmers find the best day to clear their field without burning. Delhi sees the air, and reports the smoke.
           </p>
 
-          <div className="hero-ctas flex flex-col sm:flex-row items-center gap-4 mb-4">
+          <div className="hero-ctas flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup?role=farmer">
               <PillButton size="lg" variant="primary-silver">I'm a farmer</PillButton>
             </Link>
@@ -117,71 +118,64 @@ export function Hero() {
               <PillButton size="lg" variant="glass">I'm a citizen</PillButton>
             </Link>
           </div>
-          
-          <Link href="/login" className="hero-ctas text-sm text-[var(--text-mid)] hover:text-[var(--text-hi)] underline underline-offset-4 mb-16 lg:mb-24">
-            Already have an account? Log in
-          </Link>
         </div>
 
-        {/* HERO COMPOSITION STAGE */}
-        <div className="relative w-full max-w-[1100px] mx-auto flex justify-center mt-[-40px] md:mt-0">
+        {/* ================================================== */}
+        {/* ZONE B — PHONE + FLOATING CARDS */}
+        {/* ================================================== */}
+        <div className="relative w-full max-w-[1100px] mx-auto flex justify-center flex-1 min-h-0 mt-8 lg:mt-[36px]">
           
           {/* Halo Background */}
-          <HeroArc className="hero-halo hero-anim-fade absolute bottom-20 md:bottom-32 z-0" />
+          <HeroArc className="hero-halo hero-anim-fade absolute bottom-0 z-0" />
 
-          {/* Desktop Floating Cards (Hidden on very small screens or placed differently) */}
+          {/* Desktop Floating Cards */}
           <div className="absolute inset-0 pointer-events-none hidden md:block z-20">
             {/* Top Left */}
-            <div className="hero-float-wrapper hero-parallax-fast absolute top-0 left-[calc(50%-520px)] xl:left-[calc(50%-580px)] origin-center pointer-events-auto">
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-[30px] right-[calc(50%+140px)] xl:right-[calc(50%+160px)] origin-center pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <TLCard />
             </div>
-            <div className="hero-float-wrapper hero-parallax-fast absolute top-[180px] left-[calc(50%-480px)] xl:left-[calc(50%-530px)] pointer-events-auto">
+            {/* Mid Left (Pill) */}
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-[140px] right-[calc(50%+130px)] xl:right-[calc(50%+150px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <TLPill />
             </div>
-            
             {/* Bottom Left */}
-            <div className="hero-float-wrapper hero-parallax-slow absolute bottom-[180px] left-[calc(50%-600px)] xl:left-[calc(50%-660px)] pointer-events-auto">
+            <div className="hero-float-wrapper hero-parallax-slow absolute top-[260px] right-[calc(50%+150px)] xl:right-[calc(50%+170px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <BLCard />
             </div>
 
             {/* Top Right */}
-            <div className="hero-float-wrapper hero-parallax-fast absolute top-[30px] right-[calc(50%-550px)] xl:right-[calc(50%-610px)] pointer-events-auto">
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-[50px] left-[calc(50%+140px)] xl:left-[calc(50%+160px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <TRCard />
             </div>
-
             {/* Bottom Right */}
-            <div className="hero-float-wrapper hero-parallax-slow absolute bottom-[120px] right-[calc(50%-520px)] xl:right-[calc(50%-580px)] pointer-events-auto">
+            <div className="hero-float-wrapper hero-parallax-slow absolute top-[200px] left-[calc(50%+130px)] xl:left-[calc(50%+150px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <BRCard />
             </div>
           </div>
 
-          {/* Mobile Tucked Cards (Visible < md) */}
+          {/* Mobile Tucked Cards */}
           <div className="absolute inset-0 pointer-events-none md:hidden z-20">
-            <div className="hero-anim-fade absolute top-10 left-[-10px] scale-[0.65] origin-top-left">
+            <div className="hero-anim-fade absolute top-[20px] left-[5%] scale-[0.60] origin-top-left">
               <TLCard />
             </div>
-            <div className="hero-anim-fade absolute bottom-20 right-[-10px] scale-[0.65] origin-bottom-right">
+            <div className="hero-anim-fade absolute top-[120px] right-[5%] scale-[0.60] origin-bottom-right">
               <BRCard />
             </div>
           </div>
 
           {/* Center Phone */}
-          <div className="hero-phone hero-anim-fade relative z-10 transform md:scale-100 scale-90 origin-bottom">
+          <div className="hero-phone hero-anim-fade absolute top-0 left-1/2 -translate-x-1/2 z-10 transform scale-[0.75] md:scale-[0.80] lg:scale-[0.85] origin-top">
             <HeroPhone />
           </div>
         </div>
         
-        {/* Mobile Carousel (Visible < md) */}
+        {/* Mobile Carousel */}
         <HeroCarouselMobile className="hero-anim-fade relative z-30" />
 
       </div>
 
       {/* Gradient Fade to next section */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[var(--bg-1)] to-transparent z-40 pointer-events-none" />
-
-      <div className="mt-auto relative z-50">
-        <AwsMarquee />
-      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[var(--bg-1)] to-transparent z-40 pointer-events-none" />
     </section>
   );
 }
