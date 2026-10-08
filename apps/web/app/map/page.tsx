@@ -47,7 +47,7 @@ export default function MapPage() {
            </div>
          </div>
        </header>
-       <div className="flex-1 relative z-10 bg-[#0A1017]">
+       <div className="flex-1 w-full h-full relative z-10 bg-[#0A1017]">
          {/* Assuming MapView natively supports dark mode configuration.
              We wrap it in a dark container for now. */}
          <MapView layers={layers} />
