@@ -30,12 +30,8 @@ export function TopBar() {
           </div>
           
           <div className="hidden sm:flex items-center gap-3">
-            <Link href="/login">
-              <PillButton variant="glass" size="md">Log in</PillButton>
-            </Link>
-            <Link href="/signup">
-              <PillButton variant="primary-silver" size="md">Sign up</PillButton>
-            </Link>
+            <PillButton href="/login" variant="glass" size="md">Log in</PillButton>
+            <PillButton href="/signup" variant="primary-silver" size="md">Sign up</PillButton>
           </div>
           
           <button className="md:hidden p-2 text-[var(--text-mid)] interactive-quiet">

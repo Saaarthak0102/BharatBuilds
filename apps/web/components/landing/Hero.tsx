@@ -111,12 +111,8 @@ export function Hero() {
           </p>
 
           <div className="hero-ctas flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup?role=farmer">
-              <PillButton size="lg" variant="primary-silver">I'm a farmer</PillButton>
-            </Link>
-            <Link href="/signup?role=citizen">
-              <PillButton size="lg" variant="glass">I'm a citizen</PillButton>
-            </Link>
+            <PillButton href="/signup?role=farmer" size="lg" variant="primary-silver">I'm a farmer</PillButton>
+            <PillButton href="/signup?role=citizen" size="lg" variant="glass">I'm a citizen</PillButton>
           </div>
         </div>
 

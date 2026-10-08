@@ -70,9 +70,7 @@ export default function LandingPage() {
                     <span className="text-[var(--text-mid)]">Punjabi voice-friendly big buttons and simple UI.</span>
                   </li>
                 </ul>
-                <Link href="/signup?role=farmer">
-                  <PillButton variant="glass" icon={<LuArrowRight />} iconPosition="right">Get Started</PillButton>
-                </Link>
+                <PillButton href="/signup?role=farmer" variant="glass" icon={<LuArrowRight />} iconPosition="right">Get Started</PillButton>
               </div>
             </div>
 
@@ -95,9 +93,7 @@ export default function LandingPage() {
                     <span className="text-[var(--text-mid)]">Opt into minimalistic alerts only when it matters.</span>
                   </li>
                 </ul>
-                <Link href="/signup?role=citizen">
-                  <PillButton variant="glass" icon={<LuArrowRight />} iconPosition="right">Get Started</PillButton>
-                </Link>
+                <PillButton href="/signup?role=citizen" variant="glass" icon={<LuArrowRight />} iconPosition="right">Get Started</PillButton>
               </div>
             </div>
           </div>
@@ -150,9 +146,7 @@ export default function LandingPage() {
                 <Chip className="bg-black/50 backdrop-blur border border-white/10">Fires</Chip>
               </div>
               <div className="flex justify-end">
-                <Link href="/map" className="pointer-events-auto">
-                  <PillButton variant="glass" size="md">Open full map</PillButton>
-                </Link>
+                <PillButton href="/map" variant="glass" size="md" className="pointer-events-auto">Open full map</PillButton>
               </div>
             </div>
           </GlassCard>
