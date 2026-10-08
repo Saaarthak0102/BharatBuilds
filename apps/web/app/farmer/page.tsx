@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { PillButton } from '@/components/ui/PillButton';
+import { IconTile } from '@/components/ui/IconTile';
+import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { apiClient } from '@/lib/api/client';
 import { PlanResult } from '@/lib/types';
-import { SampleDataBadge } from '@/components/common/SampleDataBadge';
 import { useT } from '@/lib/i18n/useT';
+import { LuCalendar, LuTractor, LuMap, LuInfo, LuArrowRight } from 'react-icons/lu';
 
 export default function FarmerDashboard() {
   const { t } = useT();
@@ -32,89 +34,102 @@ export default function FarmerDashboard() {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Left Column: Data Panel (60%) */}
-      <div className="lg:col-span-7 space-y-6">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-text-primary">{t('farmer.myField')}</h1>
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* Left Column: Main Status */}
+      <div className="xl:col-span-7 space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('farmer.myField')}</h1>
           {plan?.is_sample && <SampleDataBadge />}
         </div>
         
         {loading ? (
-          <Card className="h-64 flex items-center justify-center">
-            <p className="text-text-muted">{t('common.loading')}</p>
-          </Card>
+          <GlassCard className="h-64 flex items-center justify-center">
+            <p className="text-[var(--text-mid)] animate-pulse">{t('common.loading')}</p>
+          </GlassCard>
         ) : (
           <>
-            <Card className="bg-gradient-warm border-brand-200 shadow-md">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                {t('farmer.bestDay')}
-              </h2>
-              <div className="text-4xl font-extrabold text-brand-700 mb-4">
-                {plan?.best_day ? new Date(plan.best_day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : 'N/A'}
-              </div>
-              <p className="text-text-primary text-lg leading-relaxed bg-white/50 p-4 rounded-xl border border-white">
-                {plan?.reason_text}
-              </p>
+            <GlassCard spotlight className="border border-[var(--emerald)]/20 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--emerald)]/10 blur-[80px] rounded-full" />
               
-              {plan?.machine_option && (
-                <div className="mt-6 pt-6 border-t border-brand-100 flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-2xl flex-shrink-0">
-                    🚜
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-text-primary">{plan.machine_option.machine_type} Available</h3>
-                    <p className="text-sm text-text-secondary">{plan.machine_option.owner_label}</p>
-                  </div>
+              <div className="relative z-10">
+                <Chip variant="accent" className="bg-[var(--emerald)]/10 text-[var(--emerald)] border-[var(--emerald)]/20 mb-4">
+                  {t('farmer.bestDay')}
+                </Chip>
+                
+                <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)] mb-6">
+                  {plan?.best_day ? new Date(plan.best_day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : 'N/A'}
                 </div>
-              )}
-            </Card>
+                
+                <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-8">
+                  {plan?.reason_text}
+                </p>
+                
+                {plan?.machine_option && (
+                  <div className="flex items-center gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)]">
+                    <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
+                      <LuTractor />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[var(--text-hi)]">{plan.machine_option.machine_type} Available</h3>
+                      <p className="text-sm text-[var(--text-mid)]">{plan.machine_option.owner_label}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
 
-            <Card>
-              <h3 className="font-bold text-text-primary mb-4">{t('farmer.agentTrace')}</h3>
-              <div className="space-y-3">
+            <GlassCard>
+              <h3 className="font-semibold text-[var(--text-hi)] mb-4">{t('farmer.agentTrace')}</h3>
+              <div className="space-y-3 font-mono text-xs">
                 {plan?.tool_trace.map((trace, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
+                  <div key={i} className="flex items-center justify-between p-2 rounded bg-[var(--bg-1)] border border-[var(--border)]">
                     <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-brand-400"></span>
-                      <code className="bg-brand-50 text-brand-700 px-2 py-0.5 rounded text-xs">{trace.tool}</code>
+                      <span className="w-2 h-2 rounded-full bg-[var(--emerald)]"></span>
+                      <span className="text-[var(--text-mid)]">{trace.tool}</span>
                     </span>
-                    <span className="text-text-muted">{trace.latency_ms}ms</span>
+                    <span className="text-[var(--text-low)]">{trace.latency_ms}ms</span>
                   </div>
                 ))}
               </div>
-            </Card>
+            </GlassCard>
           </>
         )}
       </div>
 
-      {/* Right Column: Action Tiles (40%) */}
-      <div className="lg:col-span-5">
+      {/* Right Column: Actions */}
+      <div className="xl:col-span-5">
+        <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
+        
         <div className="grid grid-cols-2 gap-4">
-          <Card className="col-span-2 cursor-pointer hover:border-brand-500 transition-colors group">
-            <h3 className="font-bold text-brand-700 group-hover:text-brand-900 flex items-center justify-between">
+          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--emerald)]/50 transition-colors">
+            <h3 className="font-bold text-[var(--emerald)] group-hover:text-emerald-400 flex items-center justify-between text-lg mb-2 transition-colors">
               {t('farmer.bookMachine')}
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <LuArrowRight className="w-5 h-5" />
             </h3>
-            <p className="text-sm text-text-secondary mt-1">Secure a slot for your field</p>
-          </Card>
+            <p className="text-sm text-[var(--text-mid)]">Secure a slot for your field without burning.</p>
+          </GlassCard>
           
-          <Card className="cursor-pointer hover:border-brand-500 transition-colors">
-             <div className="text-2xl mb-2">🌾</div>
-             <h3 className="font-bold text-text-primary text-sm">{t('farmer.strawOutlets')}</h3>
-          </Card>
+          <IconTile 
+            icon={<LuMap className="w-6 h-6" />}
+            label={t('farmer.strawOutlets')}
+            className="hover:border-[var(--emerald)]/50 text-[var(--text-hi)]"
+          />
           
-          <Card className="cursor-pointer hover:border-brand-500 transition-colors">
-             <div className="text-2xl mb-2">🗺️</div>
-             <h3 className="font-bold text-text-primary text-sm">Map</h3>
-          </Card>
+          <IconTile 
+            icon={<LuCalendar className="w-6 h-6" />}
+            label="Planner"
+            className="hover:border-[var(--emerald)]/50 text-[var(--text-hi)]"
+          />
           
-           <Card className="col-span-2 cursor-pointer hover:border-brand-500 transition-colors">
-             <h3 className="font-bold text-text-primary text-sm">{t('farmer.subsidyInfo')}</h3>
-             <p className="text-xs text-text-secondary mt-1">Learn about state support for machinery</p>
-          </Card>
+          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--emerald)]/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <LuInfo className="w-5 h-5 text-[var(--text-mid)] group-hover:text-[var(--emerald)] transition-colors" />
+              <div>
+                <h3 className="font-bold text-[var(--text-hi)] text-sm">{t('farmer.subsidyInfo')}</h3>
+                <p className="text-xs text-[var(--text-mid)] mt-1">Learn about state support for machinery</p>
+              </div>
+            </div>
+          </GlassCard>
         </div>
       </div>
     </div>

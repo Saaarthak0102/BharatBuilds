@@ -42,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${instrumentSerif.variable} ${notoSansDevanagari.variable} ${notoSansGurmukhi.variable}`} data-accent="blue">
-      <body className="min-h-screen flex flex-col bg-[var(--bg-0)] text-[var(--text-hi)] font-sans antialiased overflow-x-hidden">
+      <body className="min-h-screen flex flex-col bg-black text-white font-sans antialiased overflow-x-hidden">
         {children}
       </body>
     </html>

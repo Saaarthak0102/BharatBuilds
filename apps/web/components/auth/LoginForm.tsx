@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useSession } from '@/lib/auth/useSession';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
+import { PillButton } from '../ui/PillButton';
+import { GlassCard } from '../ui/GlassCard';
 import { useRouter } from 'next/navigation';
 import { getDashboardPath } from '@/lib/auth/roleRedirect';
 
@@ -27,38 +27,38 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full">
-      <h2 className="text-xl font-bold text-center mb-6">Log In</h2>
-      {error && <div className="p-3 mb-4 text-sm text-red-600 bg-red-50 rounded-lg">{error}</div>}
+    <GlassCard className="w-full">
+      <h2 className="text-xl font-bold text-[var(--text-hi)] text-center mb-6">Log In</h2>
+      {error && <div className="p-3 mb-4 text-sm text-[var(--red)] bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-lg">{error}</div>}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Email or Phone</label>
+          <label className="block text-sm font-medium text-[var(--text-mid)] mb-1">Email or Phone</label>
           <input
             type="text"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-border rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white/50"
+            className="w-full px-4 py-2 border border-[var(--border)] rounded-md focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] bg-[var(--bg-1)] text-[var(--text-hi)] outline-none transition-all placeholder-[var(--text-low)]"
             placeholder="demo@example.com"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Password</label>
+          <label className="block text-sm font-medium text-[var(--text-mid)] mb-1">Password</label>
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-border rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white/50"
+            className="w-full px-4 py-2 border border-[var(--border)] rounded-md focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] bg-[var(--bg-1)] text-[var(--text-hi)] outline-none transition-all placeholder-[var(--text-low)]"
             placeholder="••••••••"
           />
         </div>
         
-        <Button variant="primary" type="submit" className="w-full mt-6" disabled={loading}>
+        <PillButton variant="primary-silver" type="submit" className="w-full mt-6 flex justify-center" disabled={loading}>
           {loading ? 'Logging in...' : 'Log In'}
-        </Button>
+        </PillButton>
       </form>
-    </Card>
+    </GlassCard>
   );
 }

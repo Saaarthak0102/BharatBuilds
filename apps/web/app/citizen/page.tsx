@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/Card';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { PillButton } from '@/components/ui/PillButton';
+import { IconTile } from '@/components/ui/IconTile';
+import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { apiClient } from '@/lib/api/client';
 import { TodayResponse } from '@/lib/types';
-import { SampleDataBadge } from '@/components/common/SampleDataBadge';
 import { useT } from '@/lib/i18n/useT';
+import { LuCamera, LuMapPin, LuBell, LuArrowRight, LuWind } from 'react-icons/lu';
 
 export default function CitizenDashboard() {
   const { t } = useT();
@@ -26,93 +29,101 @@ export default function CitizenDashboard() {
     loadData();
   }, []);
 
-  // Helper to map category to class
-  const getBadgeClass = (cat?: string) => {
-    if (!cat) return 'bg-gray-200';
-    return `aqi-${cat.toLowerCase().replace(' ', '-')}`;
+  const getAqiColor = (cat?: string) => {
+    if (cat === 'Severe') return 'var(--red)';
+    if (cat === 'Very Poor') return 'var(--orange-500)';
+    if (cat === 'Poor') return 'var(--amber)';
+    return 'var(--cyan)';
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Left Column: Data Panel */}
-      <div className="lg:col-span-7 space-y-6">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-text-primary">{t('citizen.today')}</h1>
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* Left Column: Today's Air */}
+      <div className="xl:col-span-7 space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('citizen.today')}</h1>
           {today?.is_sample && <SampleDataBadge />}
         </div>
-
+        
         {loading ? (
-          <Card className="h-64 flex items-center justify-center">
-            <p className="text-text-muted">{t('common.loading')}</p>
-          </Card>
+          <GlassCard className="h-64 flex items-center justify-center">
+            <p className="text-[var(--text-mid)] animate-pulse">{t('common.loading')}</p>
+          </GlassCard>
         ) : (
           <>
-            <Card className="relative overflow-hidden">
-              <div className="flex items-start justify-between">
+            <GlassCard spotlight className="border border-[var(--cyan)]/20 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-64 h-64 bg-[var(--cyan)]/10 blur-[80px] rounded-full pointer-events-none" />
+              
+              <div className="relative z-10 flex flex-col items-center text-center py-8">
+                <Chip className="bg-[var(--cyan)]/10 text-[var(--cyan)] border-[var(--cyan)]/20 mb-8 px-4 py-1">
+                  East Delhi
+                </Chip>
+                
+                {/* Huge AQI Display */}
+                <div 
+                  className="w-48 h-48 rounded-full border-[6px] flex flex-col items-center justify-center mb-8 relative"
+                  style={{ borderColor: `${getAqiColor(today?.aqi_category)}40` }}
+                >
+                  <div 
+                    className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-r-transparent transform -rotate-45"
+                    style={{ borderColor: getAqiColor(today?.aqi_category) }}
+                  />
+                  <span className="text-6xl font-serif italic text-[var(--text-hi)] leading-none mb-2">{today?.aqi}</span>
+                  <span 
+                    className="text-sm font-bold uppercase tracking-widest"
+                    style={{ color: getAqiColor(today?.aqi_category) }}
+                  >
+                    {today?.aqi_category}
+                  </span>
+                </div>
+                
+                <p className="text-xl text-[var(--text-hi)] leading-relaxed max-w-sm mx-auto bg-[var(--bg-1)] p-4 rounded-2xl border border-[var(--border)]">
+                  {today?.advice}
+                </p>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                  <LuWind className="text-[var(--cyan)] w-5 h-5" />
+                </div>
                 <div>
-                   <div className="flex items-center gap-3 mb-2">
-                     <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${getBadgeClass(today?.aqi_category)}`}>
-                       {today?.aqi_category}
-                     </span>
-                     <span className="text-sm text-text-muted">{today?.area_name}</span>
-                   </div>
-                   <div className="text-6xl font-black tracking-tighter" style={{ color: today?.aqi_color }}>
-                     {today?.aqi}
-                   </div>
-                   <p className="text-sm font-bold text-text-secondary mt-1">AQI (PM2.5)</p>
+                  <h3 className="font-semibold text-[var(--text-hi)] mb-1">Wind & Forecast</h3>
+                  <p className="text-sm text-[var(--text-mid)]">
+                    Winds are currently blowing from the northwest at 12km/h, bringing residual smoke into the NCR basin.
+                  </p>
                 </div>
               </div>
-              
-              <div className="mt-8 p-4 bg-sky-50 rounded-xl border border-sky-100">
-                <h3 className="font-bold text-sky-900 mb-1 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {t('citizen.aqiAdvice')}
-                </h3>
-                <p className="text-sky-800 text-sm leading-relaxed">{today?.advice}</p>
-              </div>
-              
-              <div className="mt-6 flex items-start gap-3 p-4 border border-border rounded-xl">
-                 <div className="text-xl">💨</div>
-                 <div>
-                   <p className="font-medium text-sm text-text-primary">{today?.wind.description}</p>
-                   <p className="text-xs text-text-secondary mt-1">{today?.smoke_drift_note}</p>
-                 </div>
-              </div>
-            </Card>
+            </GlassCard>
           </>
         )}
       </div>
 
-      {/* Right Column: Action Tiles */}
-      <div className="lg:col-span-5">
+      {/* Right Column: Citizen Actions */}
+      <div className="xl:col-span-5">
+        <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
+        
         <div className="grid grid-cols-2 gap-4">
-          <Card className="col-span-2 cursor-pointer hover:border-error transition-colors bg-white hover:bg-red-50 group border-2 border-transparent">
-            <h3 className="font-bold text-error flex items-center justify-between">
+          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--red)]/50 transition-colors border-[var(--red)]/20 bg-[var(--red)]/5">
+            <h3 className="font-bold text-[var(--red)] group-hover:text-red-400 flex items-center justify-between text-lg mb-2 transition-colors">
               {t('citizen.reportBurning')}
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <LuCamera className="w-5 h-5" />
             </h3>
-            <p className="text-sm text-red-700/80 mt-1">Spot a fire? Send a photo to alert authorities.</p>
-          </Card>
+            <p className="text-sm text-[var(--text-mid)]">Spot an illegal fire? Upload a quick photo to alert local response agents instantly.</p>
+          </GlassCard>
           
-          <Card className="cursor-pointer hover:border-sky-500 transition-colors">
-             <div className="text-2xl mb-2">🤖</div>
-             <h3 className="font-bold text-text-primary text-sm">{t('citizen.askAboutToday')}</h3>
-          </Card>
+          <IconTile 
+            icon={<LuMapPin className="w-6 h-6" />}
+            label="Map View"
+            className="hover:border-[var(--cyan)]/50 text-[var(--text-hi)]"
+          />
           
-          <Card className="cursor-pointer hover:border-sky-500 transition-colors">
-             <div className="text-2xl mb-2">🗺️</div>
-             <h3 className="font-bold text-text-primary text-sm">Map</h3>
-          </Card>
-          
-           <Card className="col-span-2 cursor-pointer hover:border-sky-500 transition-colors">
-             <h3 className="font-bold text-text-primary text-sm">{t('citizen.alertSettings')}</h3>
-             <p className="text-xs text-text-secondary mt-1">Get notified when AQI drops below your threshold</p>
-          </Card>
+          <IconTile 
+            icon={<LuBell className="w-6 h-6" />}
+            label={t('citizen.alertSettings')}
+            className="hover:border-[var(--cyan)]/50 text-[var(--text-hi)]"
+          />
         </div>
       </div>
     </div>
