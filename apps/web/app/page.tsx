@@ -138,7 +138,7 @@ export default function LandingPage() {
 
         {/* MAP PREVIEW & TRANSPARENCY */}
         <section className="reveal-section max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8 items-center">
-          <GlassCard className="aspect-video p-0 overflow-hidden relative group">
+          <GlassCard data-accent="violet" className="aspect-video p-0 overflow-hidden relative group">
             {/* Mock map image using CSS pattern for now */}
             <div className="absolute inset-0 bg-[#0A1017]" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-[#0A1017]/50 to-[#0A1017]" />

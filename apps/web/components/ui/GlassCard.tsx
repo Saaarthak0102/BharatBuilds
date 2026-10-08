@@ -14,7 +14,7 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
         ref={ref}
         className={cn(
           "glass-card p-6 transition-all duration-300",
-          spotlight && "hover:-translate-y-1 hover:shadow-[0_8px_32px_var(--accent-glow)]",
+          spotlight && "hover:-translate-y-1 hover:brightness-110",
           className
         )}
         {...props}

@@ -48,7 +48,7 @@ export default function FarmerDashboard() {
           </GlassCard>
         ) : (
           <>
-            <GlassCard spotlight className="border border-[var(--emerald)]/20 relative overflow-hidden">
+            <GlassCard data-accent="emerald" spotlight className="border border-[var(--emerald)]/20 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--emerald)]/10 blur-[80px] rounded-full" />
               
               <div className="relative z-10">
@@ -78,7 +78,7 @@ export default function FarmerDashboard() {
               </div>
             </GlassCard>
 
-            <GlassCard>
+            <GlassCard data-accent="blue">
               <h3 className="font-semibold text-[var(--text-hi)] mb-4">{t('farmer.agentTrace')}</h3>
               <div className="space-y-3 font-mono text-xs">
                 {plan?.tool_trace.map((trace, i) => (
@@ -101,7 +101,7 @@ export default function FarmerDashboard() {
         <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
         
         <div className="grid grid-cols-2 gap-4">
-          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--emerald)]/50 transition-colors">
+          <GlassCard data-accent="emerald" className="col-span-2 group cursor-pointer hover:border-[var(--emerald)]/50 transition-colors">
             <h3 className="font-bold text-[var(--emerald)] group-hover:text-emerald-400 flex items-center justify-between text-lg mb-2 transition-colors">
               {t('farmer.bookMachine')}
               <LuArrowRight className="w-5 h-5" />
@@ -110,18 +110,20 @@ export default function FarmerDashboard() {
           </GlassCard>
           
           <IconTile 
+            data-accent="emerald"
             icon={<LuMap className="w-6 h-6" />}
             label={t('farmer.strawOutlets')}
             className="hover:border-[var(--emerald)]/50 text-[var(--text-hi)]"
           />
           
           <IconTile 
+            data-accent="amber"
             icon={<LuCalendar className="w-6 h-6" />}
             label="Planner"
-            className="hover:border-[var(--emerald)]/50 text-[var(--text-hi)]"
+            className="hover:border-[var(--amber)]/50 text-[var(--text-hi)]"
           />
           
-          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--emerald)]/50 transition-colors">
+          <GlassCard data-accent="cyan" className="col-span-2 group cursor-pointer hover:border-[var(--cyan)]/50 transition-colors">
             <div className="flex items-center gap-3">
               <LuInfo className="w-5 h-5 text-[var(--text-mid)] group-hover:text-[var(--emerald)] transition-colors" />
               <div>

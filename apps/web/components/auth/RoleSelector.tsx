@@ -12,7 +12,7 @@ export function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
         onClick={() => onSelect('farmer')}
         className="w-full block text-left group"
       >
-        <GlassCard className="hover:border-[var(--emerald)]/50 transition-colors cursor-pointer group-hover:bg-[var(--emerald)]/5">
+        <GlassCard data-accent="emerald" className="hover:border-[var(--emerald)]/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-4">
             <div className="text-3xl bg-[var(--bg-1)] w-12 h-12 rounded-full flex items-center justify-center border border-[var(--border)] group-hover:border-[var(--emerald)]/30">🚜</div>
             <div>
@@ -27,7 +27,7 @@ export function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
         onClick={() => onSelect('citizen')}
         className="w-full block text-left group"
       >
-        <GlassCard className="hover:border-[var(--cyan)]/50 transition-colors cursor-pointer group-hover:bg-[var(--cyan)]/5">
+        <GlassCard data-accent="cyan" className="hover:border-[var(--cyan)]/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-4">
             <div className="text-3xl bg-[var(--bg-1)] w-12 h-12 rounded-full flex items-center justify-center border border-[var(--border)] group-hover:border-[var(--cyan)]/30">🏙️</div>
             <div>

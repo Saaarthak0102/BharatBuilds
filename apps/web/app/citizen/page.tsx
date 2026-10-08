@@ -51,7 +51,7 @@ export default function CitizenDashboard() {
           </GlassCard>
         ) : (
           <>
-            <GlassCard spotlight className="border border-[var(--cyan)]/20 relative overflow-hidden">
+            <GlassCard data-accent="cyan" spotlight className="border border-[var(--cyan)]/20 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-64 h-64 bg-[var(--cyan)]/10 blur-[80px] rounded-full pointer-events-none" />
               
               <div className="relative z-10 flex flex-col items-center text-center py-8">
@@ -83,7 +83,7 @@ export default function CitizenDashboard() {
               </div>
             </GlassCard>
 
-            <GlassCard>
+            <GlassCard data-accent="cyan">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-center shrink-0">
                   <LuWind className="text-[var(--cyan)] w-5 h-5" />
@@ -105,7 +105,7 @@ export default function CitizenDashboard() {
         <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
         
         <div className="grid grid-cols-2 gap-4">
-          <GlassCard className="col-span-2 group cursor-pointer hover:border-[var(--red)]/50 transition-colors border-[var(--red)]/20 bg-[var(--red)]/5">
+          <GlassCard data-accent="red" className="col-span-2 group cursor-pointer hover:border-[var(--red)]/50 transition-colors border-[var(--red)]/20">
             <h3 className="font-bold text-[var(--red)] group-hover:text-red-400 flex items-center justify-between text-lg mb-2 transition-colors">
               {t('citizen.reportBurning')}
               <LuCamera className="w-5 h-5" />
@@ -114,12 +114,14 @@ export default function CitizenDashboard() {
           </GlassCard>
           
           <IconTile 
+            data-accent="violet"
             icon={<LuMapPin className="w-6 h-6" />}
             label="Map View"
-            className="hover:border-[var(--cyan)]/50 text-[var(--text-hi)]"
+            className="hover:border-[var(--violet)]/50 text-[var(--text-hi)]"
           />
           
           <IconTile 
+            data-accent="cyan"
             icon={<LuBell className="w-6 h-6" />}
             label={t('citizen.alertSettings')}
             className="hover:border-[var(--cyan)]/50 text-[var(--text-hi)]"
