@@ -1,0 +1,105 @@
+/* /apps/web/styles/tokens.css */
+@theme {
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  
+  --color-text-hi: var(--text-hi);
+  --color-text-mid: var(--text-mid);
+  --color-text-low: var(--text-low);
+
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-glow: var(--accent-glow);
+  --color-accent-soft: var(--accent-soft);
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 9999px;
+
+  --font-sans: var(--font-body), system-ui, sans-serif;
+  --font-serif: var(--font-display), Georgia, serif;
+}
+
+:root {
+  /* Base Palette */
+  --bg-0: #07090D;
+  --bg-1: #0D1117;
+  --bg-2: #141A23;
+  --bg-3: #1B2330;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.16);
+  --text-hi: #F4F7FB;
+  --text-mid: #B4BECC;
+  --text-low: #7C8798;
+  
+  /* Default Accent System (Blue) */
+  --accent: #3B82F6;
+  --accent-2: #60A5FA;
+  --accent-glow: rgba(59, 130, 246, 0.25);
+  --accent-soft: rgba(59, 130, 246, 0.1);
+}
+
+/* Accent Maps */
+[data-accent="blue"] {
+  --accent: #3B82F6;
+  --accent-2: #60A5FA;
+  --accent-glow: rgba(59, 130, 246, 0.25);
+  --accent-soft: rgba(59, 130, 246, 0.1);
+}
+
+[data-accent="emerald"] {
+  --accent: #10B981;
+  --accent-2: #34D399;
+  --accent-glow: rgba(16, 185, 129, 0.25);
+  --accent-soft: rgba(16, 185, 129, 0.1);
+}
+
+[data-accent="cyan"] {
+  --accent: #22D3EE;
+  --accent-2: #67E8F9;
+  --accent-glow: rgba(34, 211, 238, 0.25);
+  --accent-soft: rgba(34, 211, 238, 0.1);
+}
+
+[data-accent="red"] {
+  --accent: #EF4444;
+  --accent-2: #F87171;
+  --accent-glow: rgba(239, 68, 68, 0.25);
+  --accent-soft: rgba(239, 68, 68, 0.1);
+}
+
+[data-accent="violet"] {
+  --accent: #8B5CF6;
+  --accent-2: #A78BFA;
+  --accent-glow: rgba(139, 92, 246, 0.25);
+  --accent-soft: rgba(139, 92, 246, 0.1);
+}
+
+[data-accent="amber"] {
+  --accent: #F59E0B;
+  --accent-2: #FBBF24;
+  --accent-glow: rgba(245, 158, 11, 0.25);
+  --accent-soft: rgba(245, 158, 11, 0.1);
+}
+
+[data-accent="green"] {
+  --accent: #22C55E;
+  --accent-2: #4ADE80;
+  --accent-glow: rgba(34, 197, 94, 0.25);
+  --accent-soft: rgba(34, 197, 94, 0.1);
+}
+
+/* AQI Categories */
+.aqi-good { --aqi-color: #22C55E; }
+.aqi-satisfactory { --aqi-color: #84CC16; }
+.aqi-moderate { --aqi-color: #EAB308; }
+.aqi-poor { --aqi-color: #F97316; }
+.aqi-very-poor { --aqi-color: #EF4444; }
+.aqi-severe { --aqi-color: #991B1B; }
