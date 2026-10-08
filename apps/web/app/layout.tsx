@@ -31,7 +31,7 @@ const notoSansGurmukhi = Noto_Sans_Gurmukhi({
 });
 
 export const metadata: Metadata = {
-  title: "Saans - From Field to Delhi",
+  title: "Saans - One good decision at a time",
   description: "An agent-driven web platform for the Delhi Diwali and stubble-burning smog season.",
 };
 

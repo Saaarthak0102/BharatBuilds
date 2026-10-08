@@ -296,7 +296,7 @@ export default function CitizenDashboard() {
                       </div>
                       <p className="text-sm lg:text-[clamp(0.85rem,1.8vh,1.1rem)] text-[var(--text-hi)] line-clamp-3 leading-snug lg:leading-relaxed">
                         {today?.advice ||
-                          'Sensitive groups should reduce prolonged outdoor exertion. Wear an N95 mask outside and keep indoor air purifiers running.'}
+                          'Sensitive groups should reduce prolonged outdoor exertion. Everyone else should limit heavy outdoor activity.'}
                       </p>
                       <div className="text-[11px] lg:text-[clamp(0.7rem,1.5vh,0.85rem)] text-[var(--text-low)] mt-2 lg:mt-3 flex items-center gap-2">
                         <span>NW wind 12 km/h</span>
