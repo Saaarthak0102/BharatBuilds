@@ -3,24 +3,27 @@
 import * as React from "react";
 import { HeroFloatCard } from "./HeroFloatCard";
 import { Chip, SampleDataBadge } from "@/components/ui/Chip";
-import { LuChartBar, LuFlame, LuBell, LuMapPin, LuCamera, LuArrowUpRight } from "react-icons/lu";
+import { LuChartBar, LuFlame, LuBell, LuMapPin, LuCamera, LuArrowUpRight, LuWind, LuCalendar } from "react-icons/lu";
 import { heroMock } from "@/lib/mock/heroMock";
 
 export function TLCard() {
+  const [day, date] = heroMock.farmer.bestDay.split(', ');
+  
   return (
-    <HeroFloatCard accent="emerald" tilt="left" className="w-[200px]">
-      <div className="absolute top-0 right-4 -translate-y-1/2 z-10">
-        <Chip className="bg-[var(--emerald)] text-[var(--bg-0)] font-bold border-none shadow-[0_4px_12px_rgba(16,185,129,0.3)] px-3 py-0.5 text-[10px]">
-          Thu
-        </Chip>
+    <HeroFloatCard accent="emerald" tilt="left" className="w-[240px]">
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-8 h-8 rounded-full bg-[var(--emerald)]/10 flex items-center justify-center shrink-0">
+          <LuCalendar className="w-4 h-4 text-[var(--emerald)]" />
+        </div>
+        <div className="bg-[var(--emerald)]/10 border border-[var(--emerald)]/20 text-[var(--emerald)] font-medium px-2 py-0.5 rounded text-[10px]">
+          {date}
+        </div>
       </div>
-      <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-medium mb-3">Best day to clear</div>
-      <div className="h-10 w-full relative">
-        {/* Mock Sparkline */}
-        <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-          <path d="M0,35 Q10,20 20,30 T40,25 T60,10 T80,15 T100,5" fill="none" stroke="var(--emerald)" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="60" cy="10" r="3" fill="var(--emerald)" className="animate-pulse" />
-        </svg>
+      <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider mb-1">Best day to clear</div>
+      <div className="font-serif italic text-3xl text-[var(--text-hi)] leading-none mb-3">{day}</div>
+      <div className="text-[11px] text-[var(--text-mid)] leading-snug flex items-start gap-2 bg-[var(--bg-1)]/40 p-2 rounded-lg border border-[var(--border)]/50">
+        <LuWind className="w-3.5 h-3.5 text-[var(--emerald)] shrink-0 mt-0.5" />
+        <span>{heroMock.farmer.reason}</span>
       </div>
     </HeroFloatCard>
   );
@@ -85,27 +88,23 @@ export function TRCard() {
 export function BRCard() {
   return (
     <HeroFloatCard accent="red" tilt="right" className="w-[240px]">
-      <div className="flex gap-4">
-        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--red)]/20 to-[#0A0D14] border border-[var(--red)]/30 flex items-center justify-center shrink-0">
-          <LuFlame className="w-6 h-6 text-red-400 opacity-90" />
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-8 h-8 rounded-full bg-[var(--red)]/10 flex items-center justify-center shrink-0">
+          <LuFlame className="w-4 h-4 text-[var(--red)]" />
         </div>
-        <div className="flex flex-col justify-center py-0.5">
-          <div className="text-sm font-medium text-[var(--text-hi)] mb-1">Report burning</div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)] animate-pulse" />
-            <span className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider">Received</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <LuMapPin className="w-3 h-3 text-[var(--text-low)]" />
-            <LuCamera className="w-3 h-3 text-[var(--text-low)]" />
-            <LuBell className="w-3 h-3 text-[var(--text-low)]" />
-          </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)] animate-pulse" />
+          <span className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-medium">Received</span>
         </div>
       </div>
-      <div className="absolute -top-3 -right-3 z-10">
-        <div className="bg-[var(--bg-2)] border border-[var(--border)] text-[var(--text-hi)] text-[10px] px-2.5 py-1 rounded-t-lg rounded-bl-lg rounded-br-sm shadow-xl flex items-center gap-1.5 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-          {heroMock.stats.reports} reports
+      <div className="font-serif italic text-3xl text-[var(--text-hi)] leading-tight mb-3">Report burning</div>
+      <div className="flex items-center justify-between mt-1 pt-2 border-t border-[var(--border)]/30">
+        <div className="text-[11px] text-[var(--text-mid)] font-medium">
+          <span className="text-[var(--text-hi)]">{heroMock.stats.reports}</span> reports near you
+        </div>
+        <div className="flex items-center gap-1.5">
+          <LuMapPin className="w-3.5 h-3.5 text-[var(--text-low)]" />
+          <LuCamera className="w-3.5 h-3.5 text-[var(--text-low)]" />
         </div>
       </div>
     </HeroFloatCard>
