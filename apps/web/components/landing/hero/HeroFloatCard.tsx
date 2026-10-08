@@ -21,6 +21,10 @@ export const HeroFloatCard = React.forwardRef<HTMLDivElement, HeroFloatCardProps
           className
         )}
         data-accent={accent}
+        style={{
+          boxShadow: "0 16px 40px rgba(0,0,0,0.5), 0 0 24px var(--card-accent)",
+          ...props.style
+        }}
         {...props}
       >
         {children}

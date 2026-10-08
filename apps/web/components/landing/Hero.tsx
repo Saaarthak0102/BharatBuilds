@@ -139,7 +139,7 @@ export function Hero() {
               <TLPill />
             </div>
             {/* Bottom Left */}
-            <div className="hero-float-wrapper hero-parallax-slow absolute top-[260px] right-[calc(50%+150px)] xl:right-[calc(50%+170px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
+            <div className="hero-float-wrapper hero-parallax-slow absolute top-[220px] right-[calc(50%+180px)] xl:right-[calc(50%+200px)] pointer-events-auto transform scale-[0.85] lg:scale-[0.9]">
               <BLCard />
             </div>
 
