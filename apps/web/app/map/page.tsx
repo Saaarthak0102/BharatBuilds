@@ -36,7 +36,7 @@ export default function MapPage() {
     <div className="h-screen w-screen relative overflow-hidden flex flex-col bg-[var(--bg-0)]">
        <AccentGlow />
        <header className="h-16 bg-[var(--bg-1)]/80 backdrop-blur-md border-b border-[var(--border)] flex items-center px-4 shrink-0 relative z-20">
-         <Link href="/" className="flex items-center gap-2 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors">
+         <Link href="/" className="flex items-center gap-2 text-[var(--text-mid)] interactive-quiet">
            <LuArrowLeft className="w-5 h-5" />
            <span className="font-medium">Back</span>
          </Link>

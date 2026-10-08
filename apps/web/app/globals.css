@@ -74,6 +74,7 @@
   .interactive-tactile {
     transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
     will-change: transform, filter, box-shadow;
+    cursor: pointer;
   }
   
   @media (hover: hover) and (pointer: fine) {
@@ -107,6 +108,7 @@
   /* Quiet Interaction (Text Links, Icons, Nav Items) */
   .interactive-quiet {
     transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    cursor: pointer;
   }
   
   @media (hover: hover) and (pointer: fine) {

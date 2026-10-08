@@ -38,7 +38,7 @@ function SignupFlow() {
       {/* Mock fast-forward for demo */}
       <button 
         onClick={() => window.location.href = roleParam === 'farmer' ? '/farmer' : '/citizen'}
-        className="w-full bg-[var(--bg-2)] border border-[var(--border)] text-[var(--text-hi)] py-3 rounded-full hover:bg-[var(--bg-3)] transition-colors font-medium mb-4"
+        className="w-full bg-[var(--bg-2)] border border-[var(--border)] text-[var(--text-hi)] py-3 rounded-full interactive-tactile font-medium mb-4"
       >
         Quick Demo Login
       </button>
