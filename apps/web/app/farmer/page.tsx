@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { IconTile } from '@/components/ui/IconTile';
-import { HeroCard } from '@/components/dashboard/HeroCard';
+import { DashboardLeftCard } from '@/components/dashboard/DashboardLeftCard';
+import { WeatherPanel } from '@/components/dashboard/WeatherPanel';
 import { MiniStatCard } from '@/components/dashboard/MiniStatCard';
 import { ActionCard } from '@/components/dashboard/ActionCard';
 import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
@@ -15,6 +16,7 @@ import { PlanResult } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
 import {
   MOCK_WEATHER_FARMER,
+  FULL_WEATHER_FARMER,
   MOCK_RECENT_BOOKINGS,
   calculateEarnings,
   calculateFarmerImpact,
@@ -176,13 +178,18 @@ export default function FarmerDashboard() {
           <div className="grid grid-cols-12 gap-4 xl:gap-5 flex-1 min-h-0">
             {/* ─── Left Column (7/12): My Field Hero Card ─── */}
             <div className="col-span-7 h-full min-h-0 flex flex-col">
-              <HeroCard
+              <DashboardLeftCard
                 accent="emerald"
-                title={t('farmer.myField')}
-                location={t('farmer.location')}
-                dateText="Tuesday, Nov 5"
-                isSample={plan?.is_sample ?? true}
-                weather={MOCK_WEATHER_FARMER}
+                weatherPanel={
+                  <WeatherPanel
+                    weather={FULL_WEATHER_FARMER}
+                    title={t('farmer.myField')}
+                    location={t('farmer.location')}
+                    dateText="Tuesday, Nov 5"
+                    isSample={plan?.is_sample ?? true}
+                    accent="emerald"
+                  />
+                }
                 heroContent={
                   <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-2 mb-2 lg:mb-3">
@@ -203,7 +210,7 @@ export default function FarmerDashboard() {
                         : 'Tuesday, Nov 5'}
                     </div>
 
-                    <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-2 leading-relaxed mt-1 lg:mt-2">
+                    <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-3 leading-relaxed mt-1 lg:mt-2">
                       {plan?.reason_text ||
                         "Low wind speeds mean smoke won't drift toward populated areas, and a Happy Seeder is available at Kisan Seva Kendra."}
                     </p>
@@ -216,14 +223,9 @@ export default function FarmerDashboard() {
                       label={t('farmer.machineAvailability')}
                       accent="emerald"
                       icon={<LuTractor className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                    >
-                      <div className="font-semibold text-xs sm:text-sm text-[var(--text-hi)] truncate leading-tight">
-                        Happy Seeder Available
-                      </div>
-                      <div className="text-[11px] text-[var(--text-mid)] truncate mt-0.5">
-                        Kisan Seva Kendra, Patiala
-                      </div>
-                    </MiniStatCard>
+                      value="Happy Seeder"
+                      caption="Kisan Seva Kendra, Patiala"
+                    />
 
                     {/* 2. My Earnings So Far */}
                     <MiniStatCard
@@ -292,7 +294,7 @@ export default function FarmerDashboard() {
                           <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">Kisan Seva Kendra (4 km) • Tomorrow, 9 AM</p>
                         </div>
                       </div>
-                      <button className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-[var(--bg-0)] text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20">
+                      <button className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20">
                         Book
                       </button>
                     </div>

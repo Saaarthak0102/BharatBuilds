@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { IconTile } from '@/components/ui/IconTile';
-import { HeroCard } from '@/components/dashboard/HeroCard';
+import { DashboardLeftCard } from '@/components/dashboard/DashboardLeftCard';
+import { WeatherPanel } from '@/components/dashboard/WeatherPanel';
 import { MiniStatCard } from '@/components/dashboard/MiniStatCard';
 import { ActionCard } from '@/components/dashboard/ActionCard';
 import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
@@ -16,6 +17,7 @@ import { TodayResponse } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
 import {
   MOCK_WEATHER_CITIZEN,
+  FULL_WEATHER_CITIZEN,
   MOCK_RECENT_REPORTS,
   getCitizenRegionalImpact,
   DID_YOU_KNOW_FACTS,
@@ -252,25 +254,30 @@ export default function CitizenDashboard() {
           <div className="grid grid-cols-12 gap-4 xl:gap-5 flex-1 min-h-0">
             {/* ─── Left Column (7/12): Today Hero Card ─── */}
             <div className="col-span-7 h-full min-h-0 flex flex-col">
-              <HeroCard
+              <DashboardLeftCard
                 accent="cyan"
-                title={t('citizen.today')}
-                location={t('citizen.location')}
-                dateText="Today, 10:15 AM"
-                isSample={today?.is_sample ?? true}
-                weather={MOCK_WEATHER_CITIZEN}
+                weatherPanel={
+                  <WeatherPanel
+                    weather={FULL_WEATHER_CITIZEN}
+                    title={t('citizen.today')}
+                    location={t('citizen.location')}
+                    dateText="Today, 10:15 AM"
+                    isSample={today?.is_sample ?? true}
+                    accent="cyan"
+                  />
+                }
                 heroContent={
                   <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto,1fr] items-center gap-5">
                     {/* Compact AQI Circular Ring */}
                     <div
-                      className="w-[clamp(130px,16vh,190px)] h-[clamp(130px,16vh,190px)] rounded-full border-[8px] flex flex-col items-center justify-center relative shrink-0"
+                      className="w-[clamp(110px,15vh,150px)] h-[clamp(110px,15vh,150px)] rounded-full border-[6px] lg:border-[8px] flex flex-col items-center justify-center relative shrink-0"
                       style={{ borderColor: `${getAqiColor(today?.aqi_category)}35` }}
                     >
                       <div
-                        className="absolute inset-0 rounded-full border-[8px] border-t-transparent border-r-transparent transform -rotate-45"
+                        className="absolute inset-0 rounded-full border-[6px] lg:border-[8px] border-t-transparent border-r-transparent transform -rotate-45"
                         style={{ borderColor: getAqiColor(today?.aqi_category) }}
                       />
-                      <span className="text-[clamp(3.5rem,6vh,5rem)] font-serif italic text-[var(--text-hi)] leading-none mb-1">
+                      <span className="text-[clamp(2.5rem,5vh,4rem)] font-serif italic text-[var(--text-hi)] leading-none mb-1">
                         {today?.aqi || 185}
                       </span>
                       <span
@@ -287,7 +294,7 @@ export default function CitizenDashboard() {
                         <LuWind className="w-3.5 h-3.5" />
                         <span>Health & Exposure Advice</span>
                       </div>
-                      <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-hi)] line-clamp-2 leading-relaxed">
+                      <p className="text-sm lg:text-[clamp(0.85rem,1.8vh,1.1rem)] text-[var(--text-hi)] line-clamp-3 leading-snug lg:leading-relaxed">
                         {today?.advice ||
                           'Sensitive groups should reduce prolonged outdoor exertion. Wear an N95 mask outside and keep indoor air purifiers running.'}
                       </p>
@@ -332,7 +339,7 @@ export default function CitizenDashboard() {
                         icon={<LuSparkles className="w-3.5 h-3.5 text-amber-400" />}
                       >
                         <div
-                          className={`text-xs text-[var(--text-hi)] line-clamp-2 leading-tight transition-opacity duration-300 ${
+                          className={`text-xs text-[var(--text-hi)] line-clamp-3 leading-tight transition-opacity duration-300 ${
                             isFactFading ? 'opacity-0' : 'opacity-100'
                           }`}
                         >

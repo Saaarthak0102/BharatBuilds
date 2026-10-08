@@ -226,6 +226,84 @@ export const MOCK_WEATHER_CITIZEN: WeatherStripData = {
   aqiCategory: 'Poor',
 };
 
+export interface HourlyWeather {
+  time: string;
+  icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon' | 'cloud-moon';
+  temp: string;
+  rainChance?: string;
+}
+
+export interface WeatherSnapshot {
+  temp: string;
+  feelsLike: string;
+  high: string;
+  low: string;
+  condition: string;
+  icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon';
+  windSpeed: string;
+  windDir: string;
+  humidity: string;
+  rainChance: string;
+  visibility: string;
+  uvIndex: number;
+  sunset: string;
+  aqi: number;
+  aqiLabel: 'Good' | 'Satisfactory' | 'Moderate' | 'Poor' | 'Very Poor' | 'Severe';
+  hourly: HourlyWeather[];
+}
+
+export const FULL_WEATHER_FARMER: WeatherSnapshot = {
+  temp: '26',
+  feelsLike: '27',
+  high: '29',
+  low: '17',
+  condition: 'Clear Sky',
+  icon: 'sun',
+  windSpeed: '9 km/h',
+  windDir: 'NW',
+  humidity: '42%',
+  rainChance: '0%',
+  visibility: '8 km',
+  uvIndex: 6,
+  sunset: '5:42 PM',
+  aqi: 142,
+  aqiLabel: 'Moderate',
+  hourly: [
+    { time: '11 AM', icon: 'sun', temp: '27' },
+    { time: '12 PM', icon: 'sun', temp: '28' },
+    { time: '1 PM', icon: 'sun', temp: '29' },
+    { time: '2 PM', icon: 'sun', temp: '29' },
+    { time: '3 PM', icon: 'sun', temp: '28' },
+    { time: '4 PM', icon: 'cloud-sun', temp: '27' },
+  ],
+};
+
+export const FULL_WEATHER_CITIZEN: WeatherSnapshot = {
+  temp: '24',
+  feelsLike: '25',
+  high: '29',
+  low: '17',
+  condition: 'Hazy',
+  icon: 'haze',
+  windSpeed: '12 km/h',
+  windDir: 'NW',
+  humidity: '48%',
+  rainChance: '0%',
+  visibility: '1.2 km',
+  uvIndex: 4,
+  sunset: '5:38 PM',
+  aqi: 185,
+  aqiLabel: 'Poor',
+  hourly: [
+    { time: '11 AM', icon: 'haze', temp: '25' },
+    { time: '12 PM', icon: 'haze', temp: '26' },
+    { time: '1 PM', icon: 'haze', temp: '27' },
+    { time: '2 PM', icon: 'sun', temp: '28' },
+    { time: '3 PM', icon: 'sun', temp: '27' },
+    { time: '4 PM', icon: 'haze', temp: '25' },
+  ],
+};
+
 // ============================================================================
 // 7. BOOKINGS & REPORTS (Max 2 rows displayed)
 // ============================================================================

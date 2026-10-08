@@ -37,7 +37,7 @@ export function MiniStatCard({
   return (
     <div
       className={cn(
-        'rounded-xl bg-[var(--bg-1)]/80 border border-[var(--border)] p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 min-h-0 overflow-hidden',
+        'rounded-xl bg-[var(--bg-1)]/80 border border-[var(--border)] p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 min-h-[88px] overflow-visible',
         accentBorder,
         className
       )}
