@@ -91,7 +91,7 @@ export function Hero() {
   return (
     <section 
       ref={containerRef} 
-      className="relative w-full overflow-hidden h-[100svh] max-h-[1000px] min-h-[700px] flex flex-col pt-20 lg:pt-24"
+      className="relative w-full overflow-hidden h-[calc(100svh-64px)] max-h-[1000px] min-h-[700px] flex flex-col pt-8 lg:pt-12"
     >
       <div className="max-w-[1200px] w-full mx-auto px-4 flex flex-col items-center relative z-10 h-full">
         

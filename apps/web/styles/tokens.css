@@ -25,9 +25,15 @@
 
   --font-sans: var(--font-body), system-ui, sans-serif;
   --font-serif: var(--font-display), Georgia, serif;
+  
+  --navbar-height: 64px;
+  --z-sticky: var(--z-sticky);
 }
 
 :root {
+  /* Z-index */
+  --z-sticky: 50;
+  
   /* Base Palette */
   --bg-0: #07090D;
   --bg-1: #0D1117;
