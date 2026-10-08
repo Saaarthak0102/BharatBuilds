@@ -11,6 +11,9 @@ export const hi: typeof en = {
     sampleData: 'नमूना डेटा',
     bookSlot: 'स्लॉट बुक करें',
     signOut: 'साइन आउट',
+    viewAll: 'सभी देखें',
+    cancel: 'रद्द करें',
+    actions: 'कार्रवाई',
   },
   landing: {
     ...en.landing,
@@ -18,8 +21,24 @@ export const hi: typeof en = {
     imAFarmer: 'मैं एक किसान हूँ',
     imACitizen: 'मैं एक नागरिक हूँ',
   },
+  auth: {
+    ...en.auth,
+  },
   farmer: {
     ...en.farmer,
     myField: 'मेरा खेत',
-  }
+    bestDay: 'खेत साफ करने का सबसे अच्छा दिन',
+    earningsSoFar: 'अब तक की कमाई',
+    burningAvoided: 'बची पराली/जमीन',
+    environmentSaved: 'पर्यावरण बचत',
+    recentBookings: 'हाल की बुकिंग',
+  },
+  citizen: {
+    ...en.citizen,
+    today: 'आज की हवा',
+    feelingHeavy: 'सांस लेने में भारीपन?',
+    troubleBreathing: 'सांस लेने में कठिनाई? तुरंत मदद लें',
+    recentReports: 'मेरी हालिया रिपोर्ट',
+    call112: '112 / एम्बुलेंस पर कॉल करें',
+  },
 };
