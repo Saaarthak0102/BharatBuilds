@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { TopBar } from "@/components/ui/TopBar";
-import AccentGlow from "@/components/ui/AccentGlow";
+import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { PillButton } from "@/components/ui/PillButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Chip, SampleDataBadge } from "@/components/ui/Chip";
@@ -34,7 +34,7 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen" ref={containerRef}>
-      <AccentGlow />
+      <AmbientBackground accent="blue" />
       <TopBar />
 
       <main className="flex-1 pb-20">

@@ -2,7 +2,6 @@
 
 import { ReactNode } from 'react';
 import { TopBar } from './TopBar';
-import AccentGlow from '@/components/ui/AccentGlow';
 import { LuHouse, LuMap } from 'react-icons/lu';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -15,8 +14,7 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, role, className }: DashboardShellProps) {
   return (
-    <div className="min-h-screen flex flex-col relative bg-[var(--bg-0)]">
-      <AccentGlow />
+    <div className="min-h-screen flex flex-col relative">
       <TopBar role={role} />
       
       <main className={cn('flex-1 w-full mx-auto relative z-10 flex flex-col', className)}>

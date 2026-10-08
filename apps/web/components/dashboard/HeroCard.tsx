@@ -48,10 +48,8 @@ export function HeroCard({
     <GlassCard
       data-accent={accent}
       className={cn(
-        'relative overflow-hidden border flex flex-col justify-between h-full min-h-0',
+        'relative overflow-hidden border flex flex-col h-full min-h-0 p-5 sm:p-6',
         borderColor,
-        // Responsive padding scaled to fit shorter desktop viewports without overflow
-        'p-3.5 sm:p-4 lg:p-4.5 xl:p-5 2xl:p-6',
         className
       )}
     >
@@ -63,7 +61,7 @@ export function HeroCard({
         )}
       />
 
-      <div className="relative z-10 flex flex-col h-full justify-between gap-2.5 sm:gap-3 lg:gap-3.5 min-h-0">
+      <div className="relative z-10 flex flex-col h-full min-h-0 gap-3 sm:gap-4">
         {/* 1. Header row: Title, SAMPLE DATA badge, location, date */}
         <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
           <div className="flex items-center gap-3">
@@ -85,18 +83,18 @@ export function HeroCard({
         </div>
 
         {/* 3. Hero / Verdict Block */}
-        <div className="flex-1 min-h-0 flex flex-col justify-center">
+        <div className="flex-[1.4] min-h-0 flex flex-col">
           {heroContent}
         </div>
 
         {/* 4. Mini Card Grid (2x2) */}
-        <div className="shrink-0 min-h-0">
+        <div className="flex-1 min-h-0">
           {miniStatsGrid}
         </div>
 
         {/* 5. Footer: Positive reinforcement or rotating insight */}
         {footerContent && (
-          <div className="shrink-0 pt-1 border-t border-[var(--border)]">
+          <div className="shrink-0 pt-3 sm:pt-4 border-t border-[var(--border)]">
             {footerContent}
           </div>
         )}

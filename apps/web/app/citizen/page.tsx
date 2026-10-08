@@ -10,6 +10,7 @@ import { ActionCard } from '@/components/dashboard/ActionCard';
 import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion, ToolTraceItem } from '@/components/dashboard/AgentLogAccordion';
 import { EmergencyFeelingHeavyModal } from '@/components/dashboard/EmergencyFeelingHeavyModal';
+import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
 import { TodayResponse } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
@@ -107,6 +108,7 @@ export default function CitizenDashboard() {
 
   return (
     <div className="w-full">
+      <AmbientBackground accent="cyan" aqiCategory={today?.aqi_category} />
       {/* Emergency "Feeling heavy?" Modal Flow */}
       <EmergencyFeelingHeavyModal
         isOpen={isEmergencyOpen}
@@ -258,21 +260,21 @@ export default function CitizenDashboard() {
                 isSample={today?.is_sample ?? true}
                 weather={MOCK_WEATHER_CITIZEN}
                 heroContent={
-                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-3 sm:p-3.5 border border-[var(--border)] min-h-0 flex items-center gap-4 xl:gap-6">
+                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto,1fr] items-center gap-5">
                     {/* Compact AQI Circular Ring */}
                     <div
-                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-[5px] flex flex-col items-center justify-center relative shrink-0"
+                      className="w-[clamp(130px,16vh,190px)] h-[clamp(130px,16vh,190px)] rounded-full border-[8px] flex flex-col items-center justify-center relative shrink-0"
                       style={{ borderColor: `${getAqiColor(today?.aqi_category)}35` }}
                     >
                       <div
-                        className="absolute inset-0 rounded-full border-[5px] border-t-transparent border-r-transparent transform -rotate-45"
+                        className="absolute inset-0 rounded-full border-[8px] border-t-transparent border-r-transparent transform -rotate-45"
                         style={{ borderColor: getAqiColor(today?.aqi_category) }}
                       />
-                      <span className="text-3xl sm:text-4xl font-serif italic text-[var(--text-hi)] leading-none mb-1">
+                      <span className="text-[clamp(3.5rem,6vh,5rem)] font-serif italic text-[var(--text-hi)] leading-none mb-1">
                         {today?.aqi || 185}
                       </span>
                       <span
-                        className="text-[10px] font-bold uppercase tracking-wider"
+                        className="text-[clamp(0.6rem,1.2vh,0.85rem)] font-bold uppercase tracking-wider"
                         style={{ color: getAqiColor(today?.aqi_category) }}
                       >
                         {today?.aqi_category || 'POOR'}
@@ -280,16 +282,16 @@ export default function CitizenDashboard() {
                     </div>
 
                     {/* Health Advice limited to 2 lines */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--cyan)] mb-1 flex items-center gap-1.5">
+                    <div className="flex flex-col min-w-0">
+                      <div className="text-xs lg:text-[clamp(0.7rem,1.5vh,0.9rem)] font-semibold uppercase tracking-wider text-[var(--cyan)] mb-1 flex items-center gap-1.5">
                         <LuWind className="w-3.5 h-3.5" />
                         <span>Health & Exposure Advice</span>
                       </div>
-                      <p className="text-xs sm:text-sm text-[var(--text-hi)] line-clamp-2 leading-relaxed">
+                      <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-hi)] line-clamp-2 leading-relaxed">
                         {today?.advice ||
                           'Sensitive groups should reduce prolonged outdoor exertion. Wear an N95 mask outside and keep indoor air purifiers running.'}
                       </p>
-                      <div className="text-[11px] text-[var(--text-low)] mt-1.5 flex items-center gap-2">
+                      <div className="text-[11px] lg:text-[clamp(0.7rem,1.5vh,0.85rem)] text-[var(--text-low)] mt-2 lg:mt-3 flex items-center gap-2">
                         <span>NW wind 12 km/h</span>
                         <span>•</span>
                         <span className="truncate">Residual agricultural smoke in basin</span>
@@ -298,7 +300,7 @@ export default function CitizenDashboard() {
                   </div>
                 }
                 miniStatsGrid={
-                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 h-full">
                     {/* 1. Burning stopped today (Summed from collective farmer actions) */}
                     <MiniStatCard
                       label={t('citizen.burningStoppedToday')}
@@ -375,38 +377,55 @@ export default function CitizenDashboard() {
                 <span className="text-[11px] text-[var(--text-low)]">Local Action</span>
               </div>
 
-              <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3">
+              <div className="flex-1 min-h-0 flex flex-col gap-4">
                 {/* 1. Extended "Report burning" card with My Recent Reports */}
                 <ActionCard
                   title={t('citizen.reportBurning')}
                   description={t('citizen.reportBurningDesc')}
                   accent="amber"
                   icon={<LuCamera className="w-4 h-4 text-amber-400" />}
-                  className="flex-1 min-h-0 flex flex-col justify-between"
+                  className="flex-[3] min-h-0 flex flex-col justify-between"
                 >
-                  <RecentList
-                    title={t('citizen.recentReports')}
-                    items={reportListItems}
-                    totalCount={MOCK_RECENT_REPORTS.length}
-                    emptyText={t('citizen.noReports')}
-                  />
+                  <div className="flex flex-col flex-1 justify-between min-h-0 mt-3 sm:mt-4">
+                    {/* NEW compact quick upload strip */}
+                    <button className="shrink-0 h-[56px] sm:h-[64px] lg:h-[72px] rounded-xl border-2 border-dashed border-[var(--border-strong)] hover:border-[var(--amber)]/50 bg-[var(--bg-2)] flex items-center justify-center gap-3 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors group mb-3 sm:mb-4">
+                      <LuCamera className="w-5 h-5 text-amber-500/70 group-hover:text-amber-400" />
+                      <span className="text-xs sm:text-sm font-medium">Tap to snap and upload a photo, location is auto-tagged</span>
+                    </button>
+
+                    {/* NEW stats row chips */}
+                    <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">Reports: 3</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Verified: 2</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Action taken: 1</span>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
+                      <RecentList
+                        title={t('citizen.recentReports')}
+                        items={reportListItems}
+                        totalCount={MOCK_RECENT_REPORTS.length}
+                        emptyText={t('citizen.noReports')}
+                      />
+                    </div>
+                  </div>
                 </ActionCard>
 
                 {/* 2. Row of two tiles: Map View & Alert Settings */}
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 shrink-0 h-20 sm:h-22">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0 flex-1 min-h-[5.5rem]">
                   <IconTile
                     data-accent="violet"
                     icon={<LuMapPin className="w-5 h-5 text-[var(--violet)]" />}
                     label={t('citizen.mapView')}
                     sublabel="Delhi NCR & Fires"
-                    className="hover:border-[var(--violet)]/50 p-3"
+                    className="hover:border-[var(--violet)]/50 p-4"
                   />
                   <IconTile
                     data-accent="cyan"
                     icon={<LuBell className="w-5 h-5 text-[var(--cyan)]" />}
                     label={t('citizen.alertSettings')}
                     sublabel="Threshold 200 AQI"
-                    className="hover:border-[var(--cyan)]/50 p-3"
+                    className="hover:border-[var(--cyan)]/50 p-4"
                   />
                 </div>
 

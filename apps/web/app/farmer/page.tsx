@@ -9,6 +9,7 @@ import { MiniStatCard } from '@/components/dashboard/MiniStatCard';
 import { ActionCard } from '@/components/dashboard/ActionCard';
 import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
+import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
 import { PlanResult } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
@@ -68,6 +69,7 @@ export default function FarmerDashboard() {
 
   return (
     <div className="w-full">
+      <AmbientBackground accent="emerald" />
       {/* ==================================================================== */}
       {/* MOBILE LAYOUT (strictly below lg breakpoint)                         */}
       {/* Structure, spacing and ordering preserved from previous mobile layout */}
@@ -182,16 +184,16 @@ export default function FarmerDashboard() {
                 isSample={plan?.is_sample ?? true}
                 weather={MOCK_WEATHER_FARMER}
                 heroContent={
-                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-3 sm:p-3.5 border border-[var(--border)] min-h-0 flex flex-col justify-between">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[var(--emerald)]/15 text-[var(--emerald)] border border-[var(--emerald)]/30">
+                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 flex flex-col justify-center">
+                    <div className="flex items-center justify-between gap-2 mb-2 lg:mb-3">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] lg:text-xs font-bold uppercase tracking-wider bg-[var(--emerald)]/15 text-[var(--emerald)] border border-[var(--emerald)]/30">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] animate-pulse" />
                         {t('farmer.bestDay')}
                       </span>
-                      <span className="text-xs text-[var(--text-low)] font-mono">Score 82/100</span>
+                      <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">Score 82/100</span>
                     </div>
 
-                    <div className="text-2xl sm:text-3xl xl:text-4xl font-serif italic text-[var(--text-hi)] leading-tight my-1">
+                    <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
                       {plan?.best_day
                         ? new Date(plan.best_day).toLocaleDateString(undefined, {
                             weekday: 'long',
@@ -201,14 +203,14 @@ export default function FarmerDashboard() {
                         : 'Tuesday, Nov 5'}
                     </div>
 
-                    <p className="text-xs sm:text-sm text-[var(--text-mid)] line-clamp-2 leading-relaxed">
+                    <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-2 leading-relaxed mt-1 lg:mt-2">
                       {plan?.reason_text ||
                         "Low wind speeds mean smoke won't drift toward populated areas, and a Happy Seeder is available at Kisan Seva Kendra."}
                     </p>
                   </div>
                 }
                 miniStatsGrid={
-                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 h-full">
                     {/* 1. Machine Availability */}
                     <MiniStatCard
                       label={t('farmer.machineAvailability')}
@@ -270,37 +272,64 @@ export default function FarmerDashboard() {
                 <span className="text-[11px] text-[var(--text-low)]">Quick Access</span>
               </div>
 
-              <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3">
+              <div className="flex-1 min-h-0 flex flex-col gap-4">
                 {/* 1. Extended "Book a machine" card with Recent Bookings */}
                 <ActionCard
                   title={t('farmer.bookMachine')}
                   description={t('farmer.bookMachineDesc')}
                   accent="emerald"
-                  className="flex-1 min-h-0 flex flex-col justify-between"
+                  className="flex-[3] min-h-0 flex flex-col justify-between"
                 >
-                  <RecentList
-                    title={t('farmer.recentBookings')}
-                    items={bookingListItems}
-                    totalCount={MOCK_RECENT_BOOKINGS.length}
-                    emptyText={t('farmer.noBookings')}
-                  />
+                  <div className="flex flex-col flex-1 justify-between min-h-0 mt-3 sm:mt-4">
+                    {/* NEW Next available row */}
+                    <div className="shrink-0 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-2)] p-3 sm:p-4 flex items-center justify-between gap-3 mb-3 sm:mb-4 group hover:border-[var(--emerald)]/50 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] shrink-0 group-hover:scale-105 transition-transform">
+                          <LuTractor className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate">Happy Seeder</h4>
+                          <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">Kisan Seva Kendra (4 km) • Tomorrow, 9 AM</p>
+                        </div>
+                      </div>
+                      <button className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-[var(--bg-0)] text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20">
+                        Book
+                      </button>
+                    </div>
+
+                    {/* NEW stats row chips */}
+                    <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">Bookings: 8</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Completed: 7</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Upcoming: 1</span>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
+                      <RecentList
+                        title={t('farmer.recentBookings')}
+                        items={bookingListItems}
+                        totalCount={MOCK_RECENT_BOOKINGS.length}
+                        emptyText={t('farmer.noBookings')}
+                      />
+                    </div>
+                  </div>
                 </ActionCard>
 
                 {/* 2. Row of two tiles: Straw Outlets & Planner */}
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 shrink-0 h-20 sm:h-22">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0 flex-1 min-h-[5.5rem]">
                   <IconTile
                     data-accent="emerald"
                     icon={<LuMap className="w-5 h-5 text-[var(--emerald)]" />}
                     label={t('farmer.strawOutlets')}
                     sublabel="Patiala Hub"
-                    className="hover:border-[var(--emerald)]/50 p-3"
+                    className="hover:border-[var(--emerald)]/50 p-4"
                   />
                   <IconTile
                     data-accent="amber"
                     icon={<LuCalendar className="w-5 h-5 text-amber-400" />}
                     label={t('farmer.planner')}
                     sublabel="Next 7 Days"
-                    className="hover:border-[var(--amber)]/50 p-3"
+                    className="hover:border-[var(--amber)]/50 p-4"
                   />
                 </div>
 

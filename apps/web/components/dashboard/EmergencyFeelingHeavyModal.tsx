@@ -7,7 +7,7 @@ import {
   LuPhone,
   LuShare2,
   LuNavigation,
-  // LuAlertTriangle,
+  LuTriangle,
   LuX,
   LuCheck,
   LuTerminal,
@@ -134,7 +134,7 @@ export function EmergencyFeelingHeavyModal({
           <div className="space-y-4 pt-1">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-[var(--red)]/20 border border-[var(--red)]/40 flex items-center justify-center text-[var(--red)] shrink-0">
-                <LuAlertTriangle className="w-6 h-6 animate-pulse" />
+                <LuTriangle className="w-6 h-6 animate-pulse" />
               </div>
               <div>
                 <h2 id="emergency-dialog-title" className="text-xl sm:text-2xl font-bold text-[var(--text-hi)] leading-tight">
@@ -152,7 +152,7 @@ export function EmergencyFeelingHeavyModal({
 
             {/* Severe symptom alert box */}
             <div className="p-3.5 rounded-xl bg-red-950/40 border border-[var(--red)]/40 flex items-start gap-3">
-              <LuAlertTriangle className="w-5 h-5 text-[var(--red)] shrink-0 mt-0.5" />
+              <LuTriangle className="w-5 h-5 text-[var(--red)] shrink-0 mt-0.5" />
               <div className="text-xs sm:text-sm text-red-200">
                 <strong className="font-semibold block text-white mb-0.5">Severe Symptoms?</strong>
                 {t('citizen.emergencySevereWarning')}

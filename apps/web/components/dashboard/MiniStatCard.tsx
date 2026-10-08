@@ -59,12 +59,12 @@ export function MiniStatCard({
       {children ? (
         <div className="flex-1 flex flex-col justify-center min-h-0">{children}</div>
       ) : (
-        <div className="min-h-0">
-          <div className="font-serif italic text-lg sm:text-xl lg:text-2xl text-[var(--text-hi)] leading-tight truncate">
+        <div className="flex-1 flex flex-col justify-center min-h-0">
+          <div className="font-serif italic text-lg sm:text-xl lg:text-[clamp(1.5rem,3.5vh,2.5rem)] text-[var(--text-hi)] leading-tight truncate">
             {value}
           </div>
           {caption && (
-            <div className="text-[11px] text-[var(--text-low)] truncate mt-0.5">
+            <div className="text-[11px] lg:text-[clamp(0.7rem,1.5vh,0.85rem)] text-[var(--text-low)] truncate mt-1">
               {caption}
             </div>
           )}
