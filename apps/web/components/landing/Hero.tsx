@@ -1,49 +1,186 @@
-'use client';
+"use client";
 
-import { useRef } from 'react';
-import { useReveal } from '@/lib/motion/useReveal';
-import { Button } from '../ui/Button';
-import Link from 'next/link';
-import { useT } from '@/lib/i18n/useT';
+import * as React from "react";
+import Link from "next/link";
+import { PillButton } from "@/components/ui/PillButton";
+import { HeroPhone } from "./hero/HeroPhone";
+import { HeroArc } from "./hero/HeroArc";
+import { TLCard, TLPill, BLCard, TRCard, BRCard } from "./hero/HeroCards";
+import { HeroCarouselMobile } from "./hero/HeroCarouselMobile";
+import { AwsMarquee } from "./AwsMarquee";
+import { useGSAP, gsap } from "@/lib/motion/gsap";
 
 export function Hero() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { t } = useT();
-  useReveal(containerRef, { stagger: 0.1 });
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    const isReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    
+    // Entrance Timeline
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    if (isReduced) {
+      tl.from(".hero-anim-fade", { opacity: 0, duration: 1, stagger: 0.1 });
+    } else {
+      // 1. Headline & Text
+      tl.from(".hero-headline-line", {
+        y: 20,
+        opacity: 0,
+        filter: "blur(10px)",
+        duration: 0.8,
+        stagger: 0.15
+      })
+      .from(".hero-subtitle, .hero-ctas", {
+        y: 15,
+        opacity: 0,
+        duration: 0.6,
+        stagger: 0.1
+      }, "-=0.4");
+
+      // 2. Halo
+      tl.from(".hero-halo", {
+        scale: 0.92,
+        opacity: 0,
+        duration: 1.2,
+      }, "-=0.4");
+
+      // 3. Phone
+      tl.from(".hero-phone", {
+        y: 80,
+        opacity: 0,
+        duration: 0.8,
+      }, "-=1.0");
+
+      // 4. Floating Cards
+      tl.from(".hero-float-wrapper", {
+        scale: 0.9,
+        opacity: 0,
+        duration: 0.6,
+        ease: "back.out(1.4)",
+        stagger: 0.12,
+      }, "-=0.6");
+
+      // 5. Endless Float after entrance
+      tl.add(() => {
+        gsap.to(".hero-float-wrapper", {
+          y: -10,
+          duration: "random(5, 7)",
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: -1,
+          stagger: {
+            each: 0.2,
+            from: "random"
+          }
+        });
+      });
+      
+      // Parallax on scroll
+      gsap.to(".hero-parallax-fast", {
+        y: -100,
+        ease: "none",
+        scrollTrigger: { trigger: containerRef.current, start: "top top", end: "bottom top", scrub: true }
+      });
+      gsap.to(".hero-parallax-slow", {
+        y: -50,
+        ease: "none",
+        scrollTrigger: { trigger: containerRef.current, start: "top top", end: "bottom top", scrub: true }
+      });
+    }
+  }, { scope: containerRef });
 
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden bg-[var(--color-sand-200)]">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-hero opacity-10 animate-pulse pointer-events-none"></div>
-      
-      <div className="container mx-auto px-4 md:px-6 relative z-10" ref={containerRef}>
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-text-primary tracking-tight mb-6 leading-tight">
-            {t('landing.heroTitle')}
+    <section 
+      ref={containerRef} 
+      className="relative w-full overflow-hidden min-h-[100svh] flex flex-col pt-32 lg:pt-40"
+    >
+      <div className="max-w-[1200px] w-full mx-auto px-4 flex flex-col items-center relative z-10">
+        
+        {/* TEXT CONTENT */}
+        <div className="text-center flex flex-col items-center z-30">
+          <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl xl:text-[80px] tracking-tight leading-[1.1] mb-6 flex flex-col items-center">
+            <span className="hero-headline-line text-[var(--text-hi)] not-italic">From field to Delhi,</span>
+            <span className="hero-headline-line italic bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent pb-2">
+              one good decision at a time.
+            </span>
           </h1>
-          <p className="text-xl md:text-2xl text-text-secondary mb-10 max-w-2xl mx-auto">
-            {t('landing.heroSubtitle')}
-          </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup?role=farmer" className="w-full sm:w-auto">
-              <Button variant="primary" className="w-full text-lg py-4 px-8">
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                </svg>
-                {t('landing.imAFarmer')}
-              </Button>
+          <p className="hero-subtitle text-base md:text-lg text-[var(--text-mid)] max-w-2xl mb-10 text-balance">
+            Farmers find the best day to clear their field without burning. Delhi sees the air, and reports the smoke.
+          </p>
+
+          <div className="hero-ctas flex flex-col sm:flex-row items-center gap-4 mb-4">
+            <Link href="/signup?role=farmer">
+              <PillButton size="lg" variant="primary-silver">I'm a farmer</PillButton>
             </Link>
-            <Link href="/signup?role=citizen" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full text-lg py-4 px-8 bg-white/50 backdrop-blur-sm">
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {t('landing.imACitizen')}
-              </Button>
+            <Link href="/signup?role=citizen">
+              <PillButton size="lg" variant="glass">I'm a citizen</PillButton>
             </Link>
           </div>
+          
+          <Link href="/login" className="hero-ctas text-sm text-[var(--text-mid)] hover:text-[var(--text-hi)] underline underline-offset-4 mb-16 lg:mb-24">
+            Already have an account? Log in
+          </Link>
         </div>
+
+        {/* HERO COMPOSITION STAGE */}
+        <div className="relative w-full max-w-[1100px] mx-auto flex justify-center mt-[-40px] md:mt-0">
+          
+          {/* Halo Background */}
+          <HeroArc className="hero-halo hero-anim-fade absolute bottom-20 md:bottom-32 z-0" />
+
+          {/* Desktop Floating Cards (Hidden on very small screens or placed differently) */}
+          <div className="absolute inset-0 pointer-events-none hidden md:block z-20">
+            {/* Top Left */}
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-0 left-[calc(50%-520px)] xl:left-[calc(50%-580px)] origin-center pointer-events-auto">
+              <TLCard />
+            </div>
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-[180px] left-[calc(50%-480px)] xl:left-[calc(50%-530px)] pointer-events-auto">
+              <TLPill />
+            </div>
+            
+            {/* Bottom Left */}
+            <div className="hero-float-wrapper hero-parallax-slow absolute bottom-[180px] left-[calc(50%-600px)] xl:left-[calc(50%-660px)] pointer-events-auto">
+              <BLCard />
+            </div>
+
+            {/* Top Right */}
+            <div className="hero-float-wrapper hero-parallax-fast absolute top-[30px] right-[calc(50%-550px)] xl:right-[calc(50%-610px)] pointer-events-auto">
+              <TRCard />
+            </div>
+
+            {/* Bottom Right */}
+            <div className="hero-float-wrapper hero-parallax-slow absolute bottom-[120px] right-[calc(50%-520px)] xl:right-[calc(50%-580px)] pointer-events-auto">
+              <BRCard />
+            </div>
+          </div>
+
+          {/* Mobile Tucked Cards (Visible < md) */}
+          <div className="absolute inset-0 pointer-events-none md:hidden z-20">
+            <div className="hero-anim-fade absolute top-10 left-[-10px] scale-[0.65] origin-top-left">
+              <TLCard />
+            </div>
+            <div className="hero-anim-fade absolute bottom-20 right-[-10px] scale-[0.65] origin-bottom-right">
+              <BRCard />
+            </div>
+          </div>
+
+          {/* Center Phone */}
+          <div className="hero-phone hero-anim-fade relative z-10 transform md:scale-100 scale-90 origin-bottom">
+            <HeroPhone />
+          </div>
+        </div>
+        
+        {/* Mobile Carousel (Visible < md) */}
+        <HeroCarouselMobile className="hero-anim-fade relative z-30" />
+
+      </div>
+
+      {/* Gradient Fade to next section */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[var(--bg-1)] to-transparent z-40 pointer-events-none" />
+
+      <div className="mt-auto relative z-50">
+        <AwsMarquee />
       </div>
     </section>
   );
