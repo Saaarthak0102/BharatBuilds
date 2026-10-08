@@ -267,7 +267,7 @@ export default function CitizenDashboard() {
                   />
                 }
                 heroContent={
-                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto,1fr] items-center gap-5">
+                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto_1fr] items-center gap-6">
                     {/* Compact AQI Circular Ring */}
                     <div
                       className="w-[clamp(110px,15vh,150px)] h-[clamp(110px,15vh,150px)] rounded-full border-[6px] lg:border-[8px] flex flex-col items-center justify-center relative shrink-0"
@@ -307,7 +307,7 @@ export default function CitizenDashboard() {
                   </div>
                 }
                 miniStatsGrid={
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 h-full">
+                  <div className="grid grid-cols-2 auto-rows-fr gap-3.5 h-full">
                     {/* 1. Burning stopped today (Summed from collective farmer actions) */}
                     <MiniStatCard
                       label={t('citizen.burningStoppedToday')}
@@ -359,17 +359,6 @@ export default function CitizenDashboard() {
                       value="1:30 PM – 4:00 PM"
                       caption="Cleanest daylight window (AQI ~140)"
                     />
-                  </div>
-                }
-                footerContent={
-                  <div className="flex items-center justify-between text-xs text-[var(--text-mid)]">
-                    <span className="flex items-center gap-1.5 text-[var(--cyan)] font-medium">
-                      <span className="w-2 h-2 rounded-full bg-[var(--cyan)] animate-pulse" />
-                      Live satellite plume overlay active
-                    </span>
-                    <span className="text-[11px] text-[var(--text-low)]">
-                      Updated just now • Anand Vihar sensor
-                    </span>
                   </div>
                 }
               />

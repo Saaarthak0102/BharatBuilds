@@ -217,7 +217,7 @@ export default function FarmerDashboard() {
                   </div>
                 }
                 miniStatsGrid={
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 h-full">
+                  <div className="grid grid-cols-2 auto-rows-fr gap-3.5 h-full">
                     {/* 1. Machine Availability */}
                     <MiniStatCard
                       label={t('farmer.machineAvailability')}
@@ -254,12 +254,6 @@ export default function FarmerDashboard() {
                       value={`${impactData.pm25KgSaved} kg PM2.5`}
                       caption={`${impactData.co2TonnesSaved} t CO₂ kept out`}
                     />
-                  </div>
-                }
-                footerContent={
-                  <div className="flex items-center gap-2 text-xs text-[var(--emerald)] font-medium">
-                    <LuSparkles className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-                    <span className="truncate">{impactData.reinforcementText}</span>
                   </div>
                 }
               />

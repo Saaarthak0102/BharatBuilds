@@ -9,7 +9,6 @@ interface DashboardLeftCardProps {
   weatherPanel: ReactNode;
   heroContent: ReactNode;
   miniStatsGrid: ReactNode;
-  footerContent?: ReactNode;
   className?: string;
 }
 
@@ -18,7 +17,6 @@ export function DashboardLeftCard({
   weatherPanel,
   heroContent,
   miniStatsGrid,
-  footerContent,
   className,
 }: DashboardLeftCardProps) {
   const borderColor = {
@@ -45,21 +43,14 @@ export function DashboardLeftCard({
       </div>
 
       {/* 2. HERO */}
-      <div className="w-full flex-col flex min-h-[150px]" style={{ flex: '1.15 1 0' }}>
+      <div className="w-full flex-col flex min-h-[150px]" style={{ flex: '1.2 1 0' }}>
         {heroContent}
       </div>
 
       {/* 3. STATS (2x2 grid) */}
-      <div className="w-full" style={{ flex: '2 1 0' }}>
+      <div className="w-full" style={{ flex: '2.2 1 0' }}>
         {miniStatsGrid}
       </div>
-
-      {/* 4. FOOTER */}
-      {footerContent && (
-        <div className="w-full h-9 shrink-0 pt-1 border-t border-[var(--border)] flex items-center">
-          {footerContent}
-        </div>
-      )}
     </GlassCard>
   );
 }
