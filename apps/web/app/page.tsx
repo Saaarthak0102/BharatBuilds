@@ -10,7 +10,7 @@ import { Chip, SampleDataBadge } from "@/components/ui/Chip";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { IconTile } from "@/components/ui/IconTile";
 import { StatTile } from "@/components/ui/StatTile";
-import { LuLeaf, LuCloudSun, LuWind, LuCamera, LuMapPin, LuArrowRight, LuCalendar, LuTractor, LuCheckCircle2, LuShieldCheck, LuLanguages, LuCloud } from "react-icons/lu";
+import { LuLeaf, LuCloudSun, LuWind, LuCamera, LuMapPin, LuArrowRight, LuCalendar, LuTractor, LuCircleCheck, LuShieldCheck, LuLanguages, LuCloud } from "react-icons/lu";
 import { useGSAP, gsap } from "@/lib/motion/gsap";
 
 export default function LandingPage() {
@@ -188,7 +188,7 @@ export default function LandingPage() {
           </div>
           
           <div className="flex flex-wrap justify-center gap-8 mt-16 text-[var(--text-mid)] text-sm">
-            <div className="flex items-center gap-2"><LuCheckCircle2 className="text-[var(--green)]" /> Free to use</div>
+            <div className="flex items-center gap-2"><LuCircleCheck className="text-[var(--green)]" /> Free to use</div>
             <div className="flex items-center gap-2"><LuLanguages className="text-[var(--cyan)]" /> Hindi, Punjabi, English</div>
             <div className="flex items-center gap-2"><LuCloud className="text-[#FF9900]" /> Built on AWS</div>
           </div>
@@ -212,15 +212,15 @@ export default function LandingPage() {
                 <h3 className="text-3xl font-serif italic text-[var(--text-hi)] mb-4">Clear the field without burning</h3>
                 <ul className="space-y-4 mb-8">
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Find the best day to clear based on wind and weather.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Book a machine slot or find nearby straw outlets. <SampleDataBadge className="ml-2 scale-75 origin-left" /></span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--emerald)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Punjabi voice-friendly big buttons and simple UI.</span>
                   </li>
                 </ul>
@@ -237,15 +237,15 @@ export default function LandingPage() {
                 <h3 className="text-3xl font-serif italic text-[var(--text-hi)] mb-4">Know your air, report sources</h3>
                 <ul className="space-y-4 mb-8">
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Daily AQI advice in plain words, no confusing jargon.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Report burning incidents with a quick photo.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <LuCheckCircle2 className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
+                    <LuCircleCheck className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" />
                     <span className="text-[var(--text-mid)]">Opt into minimalistic alerts only when it matters.</span>
                   </li>
                 </ul>
@@ -353,7 +353,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8 text-[var(--text-mid)]">
           <div className="flex items-center gap-4">
             <span className="font-serif italic text-2xl text-[var(--text-hi)]">Saans</span>
-            <span className="text-sm">&copy; {new Date().getFullYear()}</span>
+            <span className="text-sm">&copy; 2026</span>
           </div>
           <div className="text-xs text-center md:text-left max-w-sm p-3 rounded-lg bg-[var(--bg-1)] border border-[var(--border)]">
             <span className="font-bold text-[var(--text-hi)] mb-1 block">Disclaimer</span>

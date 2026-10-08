@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LuHome, LuMap, LuCalendar, LuUser } from "react-icons/lu";
+import { LuHouse, LuMap, LuCalendar, LuUser } from "react-icons/lu";
 
 export function BottomNavPill() {
   const pathname = usePathname();
 
   const links = [
-    { href: "/", icon: LuHome, label: "Home" },
+    { href: "/", icon: LuHouse, label: "Home" },
     { href: "/map", icon: LuMap, label: "Map" },
     { href: "/farmer/field", icon: LuCalendar, label: "Planner" },
     { href: "/profile", icon: LuUser, label: "Profile" },
