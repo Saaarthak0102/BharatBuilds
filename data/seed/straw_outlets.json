@@ -1,0 +1,65 @@
+[
+  {
+    "outlet_id": "outlet-001",
+    "district_id": "patiala",
+    "facility_type": "biomass_power_plant",
+    "name": "Punjab Biomass Power Ltd (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-002",
+    "district_id": "patiala",
+    "facility_type": "cbg_plant",
+    "name": "Verbio India CBG Plant, Patiala (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-003",
+    "district_id": "ludhiana",
+    "facility_type": "pellet_maker",
+    "name": "Green Pellets Ludhiana (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-004",
+    "district_id": "sangrur",
+    "facility_type": "depot",
+    "name": "Sangrur Biomass Collection Depot (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-005",
+    "district_id": "ludhiana",
+    "facility_type": "aggregator",
+    "name": "Punjab Straw Aggregators Cooperative (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-006",
+    "district_id": "karnal",
+    "facility_type": "thermal_cofiring",
+    "name": "Panipat Thermal Plant - Co-firing Unit (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  },
+  {
+    "outlet_id": "outlet-007",
+    "district_id": "sangrur",
+    "facility_type": "brick_kiln",
+    "name": "Sangrur Eco Brick Works (Sample)",
+    "contact_hint": "Contact your nearest depot or aggregator",
+    "is_sample": true,
+    "_note": "Exact facility lists to be sourced from state pollution control board / agriculture department pages"
+  }
+]

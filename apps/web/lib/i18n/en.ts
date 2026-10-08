@@ -1,0 +1,48 @@
+export const en = {
+  common: {
+    loading: 'Loading...',
+    error: 'An error occurred',
+    retry: 'Retry',
+    sampleData: 'Sample data',
+    bookSlot: 'Book slot',
+    contactNearest: 'Contact your nearest depot or aggregator',
+    signOut: 'Sign out',
+    viewProfile: 'View profile',
+  },
+  roles: {
+    farmer: 'Farmer',
+    citizen: 'Citizen',
+  },
+  landing: {
+    heroTitle: 'From field to Delhi',
+    heroSubtitle: 'Clear your field easily. Keep the air clean.',
+    imAFarmer: "I'm a farmer",
+    imACitizen: "I'm a citizen",
+    howItWorks: 'How it works',
+  },
+  auth: {
+    login: 'Login',
+    signUp: 'Sign up',
+    chooseRole: 'Choose your role',
+  },
+  farmer: {
+    dashboard: 'Farmer Dashboard',
+    myField: 'My Field',
+    bestDay: 'Best Clearing Day',
+    machineAvailability: 'Machine Availability',
+    strawOutlets: 'Straw Outlets',
+    openPlanner: 'Open planner',
+    bookMachine: 'Book a machine',
+    subsidyInfo: 'Subsidy info',
+    agentTrace: 'How we calculated this',
+  },
+  citizen: {
+    dashboard: 'Citizen Dashboard',
+    today: 'Today',
+    reportBurning: 'Report burning',
+    askAboutToday: 'Ask about today',
+    alertSettings: 'Alert settings',
+    myReports: 'My reports',
+    aqiAdvice: 'Advice',
+  },
+};

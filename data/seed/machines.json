@@ -1,0 +1,47 @@
+[
+  {
+    "slot_id": "slot-001",
+    "village_id": "village-patiala-001",
+    "date": "2024-11-05",
+    "machine_type": "Happy Seeder",
+    "owner_label": "Kisan Seva Kendra, Patiala",
+    "slots_free": 3,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-002",
+    "village_id": "village-patiala-001",
+    "date": "2024-11-06",
+    "machine_type": "Super SMS (Straw Management System)",
+    "owner_label": "Punjab Agro, Rajpura",
+    "slots_free": 1,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-003",
+    "village_id": "village-ludhiana-001",
+    "date": "2024-11-05",
+    "machine_type": "Rotavator",
+    "owner_label": "FPO Ludhiana Cooperative",
+    "slots_free": 5,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-004",
+    "village_id": "village-ludhiana-001",
+    "date": "2024-11-07",
+    "machine_type": "Happy Seeder",
+    "owner_label": "Kisan Seva Kendra, Ludhiana",
+    "slots_free": 2,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-005",
+    "village_id": "village-sangrur-001",
+    "date": "2024-11-06",
+    "machine_type": "Mulcher",
+    "owner_label": "Panchayat Equipment Pool, Sangrur",
+    "slots_free": 4,
+    "is_sample": true
+  }
+]
