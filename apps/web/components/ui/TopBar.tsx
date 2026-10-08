@@ -17,12 +17,7 @@ export function TopBar() {
             <span className="font-serif italic text-2xl tracking-tight text-[var(--text-hi)]">Saans</span>
           </Link>
           
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[var(--text-mid)]">
-            <Link href="/#how-it-works" className="hover:text-[var(--text-hi)] transition-colors">How it works</Link>
-            <Link href="/#farmers" className="hover:text-[var(--text-hi)] transition-colors">Farmers</Link>
-            <Link href="/#citizens" className="hover:text-[var(--text-hi)] transition-colors">Citizens</Link>
-            <Link href="/map" className="hover:text-[var(--text-hi)] transition-colors">Map</Link>
-          </nav>
+
         </div>
 
         <div className="flex items-center gap-4">
