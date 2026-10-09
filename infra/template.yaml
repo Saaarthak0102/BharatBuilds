@@ -20,8 +20,65 @@ Globals:
       Variables:
         STAGE: !Ref Stage
         LOG_LEVEL: INFO
+        ALLOWED_ORIGIN: "*"
 
 Resources:
+  # ─── Cognito ─────────────────────────────────────────────
+  SaansUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub saans-users-${Stage}
+      UsernameAttributes:
+        - email
+        - phone_number
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: role
+          AttributeDataType: String
+          Mutable: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignupFunction.Arn
+
+  SaansUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub saans-web-${Stage}
+      UserPoolId: !Ref SaansUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      ReadAttributes:
+        - custom:role
+        - name
+        - email
+        - phone_number
+      WriteAttributes:
+        - custom:role
+        - name
+        - email
+        - phone_number
+
+  PreSignupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-presignup-${Stage}
+      CodeUri: ../services/
+      Handler: api.auth.pre_signup.handler
+
+  PreSignupCognitoInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PreSignupFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt SaansUserPool.Arn
+
+  # ─── API Gateway ─────────────────────────────────────────
   SaansApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -30,6 +87,11 @@ Resources:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt SaansUserPool.Arn
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -49,8 +111,19 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/health
             Method: GET
+            Auth:
+              Authorizer: NONE
 
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
     Value: !Sub "https://${SaansApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref SaansUserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref SaansUserPoolClient
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region

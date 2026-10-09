@@ -1,53 +1,50 @@
-"""Consistent API response helpers."""
-
 import json
-from typing import Any, Optional
+import os
+from .errors import ApiError
 
-
-def success_response(
-    data: Any,
-    status_code: int = 200,
-    correlation_id: Optional[str] = None,
-) -> dict:
-    """Return a standard success response for API Gateway."""
-    body = {"data": data}
-    if correlation_id:
-        body["correlation_id"] = correlation_id
-
+def get_cors_headers():
+    allowed_origin = os.environ.get("ALLOWED_ORIGIN", "*")
     return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        },
-        "body": json.dumps(body, default=str),
+        "Access-Control-Allow-Origin": allowed_origin,
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
     }
 
+def success_response(payload, status_code=200):
+    headers = {"Content-Type": "application/json"}
+    headers.update(get_cors_headers())
+    return {
+        "statusCode": status_code,
+        "headers": headers,
+        "body": json.dumps(payload)
+    }
 
-def error_response(
-    status_code: int,
-    message: str,
-    correlation_id: Optional[str] = None,
-) -> dict:
-    """Return a standard error response for API Gateway."""
-    body: dict[str, Any] = {
-        "error": {
-            "status": status_code,
-            "message": message,
+def error_response(exception):
+    headers = {"Content-Type": "application/json"}
+    headers.update(get_cors_headers())
+    
+    if isinstance(exception, ApiError):
+        return {
+            "statusCode": exception.status_code,
+            "headers": headers,
+            "body": json.dumps({
+                "error": {
+                    "code": exception.code,
+                    "message": exception.message
+                }
+            })
         }
-    }
-    if correlation_id:
-        body["correlation_id"] = correlation_id
-
+    
+    # Log the unexpected error natively if needed
+    print(f"InternalServerError: {str(exception)}")
+    
     return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        },
-        "body": json.dumps(body),
+        "statusCode": 500,
+        "headers": headers,
+        "body": json.dumps({
+            "error": {
+                "code": "InternalServerError",
+                "message": "An internal server error occurred."
+            }
+        })
     }

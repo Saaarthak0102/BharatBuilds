@@ -1,31 +1,6 @@
-"""Custom error classes for the Saans API."""
-
-
-class SaansError(Exception):
-    """Base error for all Saans API errors."""
-    pass
-
-
-class ValidationError(SaansError):
-    """Request validation failed."""
-    pass
-
-
-class AgentError(SaansError):
-    """An agent invocation failed."""
-    pass
-
-
-class NotFoundError(SaansError):
-    """Requested resource not found."""
-    pass
-
-
-class AuthError(SaansError):
-    """Authentication or authorization failed."""
-    pass
-
-
-class RateLimitError(SaansError):
-    """Rate limit exceeded."""
-    pass
+class ApiError(Exception):
+    def __init__(self, message: str, status_code: int = 400, code: str = "BadRequest"):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.code = code
