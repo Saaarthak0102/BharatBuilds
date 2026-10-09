@@ -294,8 +294,10 @@ export const cognitoClient: AuthClient = {
     await this.confirmRegistration(username, code);
 
     // 2. Sign in via SRP
+    // Use the alias (email or phone) from signupData if available to ensure LastAuthUser matches manual login
+    const loginUsername = signupData.email || signupData.phone || username;
     const session = await this.login({
-      email: username,
+      email: loginUsername,
       password: signupData.password,
     });
 
