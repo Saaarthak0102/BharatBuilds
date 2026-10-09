@@ -21,8 +21,172 @@ Globals:
         STAGE: !Ref Stage
         LOG_LEVEL: INFO
         ALLOWED_ORIGIN: "*"
+        USERS_TABLE: !Ref UsersTable
+        REPORTS_TABLE: !Ref ReportsTable
+        MACHINE_SLOTS_TABLE: !Ref MachineSlotsTable
+        STRAW_OUTLETS_TABLE: !Ref StrawOutletsTable
+        BOOKINGS_TABLE: !Ref BookingsTable
+        SUBSCRIPTIONS_TABLE: !Ref SubscriptionsTable
+        DATA_CACHE_TABLE: !Ref DataCacheTable
+        AGENT_RUNS_TABLE: !Ref AgentRunsTable
 
 Resources:
+  # ─── DynamoDB Tables ─────────────────────────────────────
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-users-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-reports-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: report_id
+          AttributeType: S
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: report_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: geohash-index
+          KeySchema:
+            - AttributeName: geohash
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  MachineSlotsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-machine-slots-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: village_id
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: village_id
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  StrawOutletsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-straw-outlets-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: district_id
+          AttributeType: S
+        - AttributeName: outlet_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: district_id
+          KeyType: HASH
+        - AttributeName: outlet_id
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  BookingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-bookings-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: booking_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: booking_id
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  SubscriptionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-subscriptions-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: subscription_id
+          AttributeType: S
+        - AttributeName: area_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: subscription_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: area_id-index
+          KeySchema:
+            - AttributeName: area_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  DataCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-data-cache-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: source
+          AttributeType: S
+        - AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: source
+          KeyType: HASH
+        - AttributeName: key
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  AgentRunsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub saans-agent-runs-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: run_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: run_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
   # ─── Cognito ─────────────────────────────────────────────
   SaansUserPool:
     Type: AWS::Cognito::UserPool
@@ -127,3 +291,27 @@ Outputs:
   Region:
     Description: AWS Region
     Value: !Ref AWS::Region
+  UsersTable:
+    Description: DynamoDB Users table name
+    Value: !Ref UsersTable
+  ReportsTable:
+    Description: DynamoDB Reports table name
+    Value: !Ref ReportsTable
+  MachineSlotsTable:
+    Description: DynamoDB MachineSlots table name
+    Value: !Ref MachineSlotsTable
+  StrawOutletsTable:
+    Description: DynamoDB StrawOutlets table name
+    Value: !Ref StrawOutletsTable
+  BookingsTable:
+    Description: DynamoDB Bookings table name
+    Value: !Ref BookingsTable
+  SubscriptionsTable:
+    Description: DynamoDB Subscriptions table name
+    Value: !Ref SubscriptionsTable
+  DataCacheTable:
+    Description: DynamoDB DataCache table name
+    Value: !Ref DataCacheTable
+  AgentRunsTable:
+    Description: DynamoDB AgentRuns table name
+    Value: !Ref AgentRunsTable

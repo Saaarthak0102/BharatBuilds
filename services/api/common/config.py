@@ -17,6 +17,7 @@ class Config:
     REPORTS_TABLE = os.environ.get("REPORTS_TABLE", "saans-reports")
     MACHINE_SLOTS_TABLE = os.environ.get("MACHINE_SLOTS_TABLE", "saans-machine-slots")
     STRAW_OUTLETS_TABLE = os.environ.get("STRAW_OUTLETS_TABLE", "saans-straw-outlets")
+    BOOKINGS_TABLE = os.environ.get("BOOKINGS_TABLE", "saans-bookings")
     SUBSCRIPTIONS_TABLE = os.environ.get("SUBSCRIPTIONS_TABLE", "saans-subscriptions")
     DATA_CACHE_TABLE = os.environ.get("DATA_CACHE_TABLE", "saans-data-cache")
     AGENT_RUNS_TABLE = os.environ.get("AGENT_RUNS_TABLE", "saans-agent-runs")
