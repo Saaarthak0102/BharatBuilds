@@ -83,3 +83,70 @@ class TestProfileEndpoint:
         """Should return the current user's profile."""
         # TODO: Implement
         pass
+
+
+class TestStrawOutletsEndpoint:
+    """Tests for GET /v1/farmer/straw-outlets."""
+
+    def _make_event(self, district=None, role="farmer"):
+        event = {
+            "requestContext": {
+                "authorizer": {
+                    "claims": {
+                        "sub": "user-test-001",
+                        "custom:role": role,
+                    }
+                }
+            }
+        }
+        if district is not None:
+            event["queryStringParameters"] = {"district": district}
+        return event
+
+    def test_straw_outlets_valid_district(self):
+        """Should return 200 and matching seed outlets for a valid district."""
+        from services.api.handlers.straw_outlets import handler
+
+        event = self._make_event("patiala", role="farmer")
+        result = handler(event, None)
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "data" in body
+        data = body["data"]
+        assert data["district"] == "patiala"
+        assert data["is_sample"] is True
+        assert isinstance(data["outlets"], list)
+        assert len(data["outlets"]) == 2
+        assert all(o["district_id"] == "patiala" for o in data["outlets"])
+        assert all(o.get("is_sample") is True for o in data["outlets"])
+
+    def test_straw_outlets_missing_district(self):
+        """Should return 400 validation error when district query parameter is missing."""
+        from services.api.handlers.straw_outlets import handler
+
+        event = self._make_event(None, role="farmer")
+        result = handler(event, None)
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert "error" in body
+
+    def test_straw_outlets_unsupported_district(self):
+        """Should return 400 validation error for an unsupported district without silent fallback."""
+        from services.api.handlers.straw_outlets import handler
+
+        event = self._make_event("unsupported_district_xyz", role="farmer")
+        result = handler(event, None)
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert "error" in body
+
+    def test_straw_outlets_non_farmer_access(self):
+        """Should return 403 Forbidden when a non-farmer caller requests straw outlets."""
+        from services.api.handlers.straw_outlets import handler
+
+        event = self._make_event("patiala", role="citizen")
+        result = handler(event, None)
+        assert result["statusCode"] == 403
+        body = json.loads(result["body"])
+        assert "error" in body
+

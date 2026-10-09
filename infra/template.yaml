@@ -256,6 +256,19 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt SaansUserPool.Arn
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -277,6 +290,197 @@ Resources:
             Method: GET
             Auth:
               Authorizer: NONE
+
+  FarmerPlanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-farmer-plan-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.farmer_plan.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataCacheTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref MachineSlotsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref StrawOutletsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AgentRunsTable
+      Events:
+        PostFarmerPlan:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/farmer/plan
+            Method: POST
+
+  FarmerBookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-farmer-book-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.farmer_book.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MachineSlotsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BookingsTable
+      Events:
+        PostFarmerBook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/farmer/book
+            Method: POST
+
+  StrawOutletsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-straw-outlets-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.straw_outlets.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref StrawOutletsTable
+      Events:
+        GetStrawOutlets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/farmer/straw-outlets
+            Method: GET
+
+  TodayFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-today-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.today.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataCacheTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
+      Events:
+        GetToday:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/today
+            Method: GET
+
+  AskFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-ask-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.ask.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataCacheTable
+      Events:
+        PostAsk:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/ask
+            Method: POST
+
+  MapLayersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-map-layers-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.map_layers.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataCacheTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
+      Events:
+        GetMapLayers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/map/layers
+            Method: GET
+
+  ReportsUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-reports-upload-url-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.reports_upload_url.handler
+      Events:
+        PostUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports/upload-url
+            Method: POST
+
+  ReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-reports-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.reports.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+      Events:
+        GetReports:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports
+            Method: GET
+        PostReports:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports
+            Method: POST
+
+  SubscriptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-subscriptions-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.subscriptions.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SubscriptionsTable
+      Events:
+        PostSubscriptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/subscriptions
+            Method: POST
+
+  ProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-profile-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.profile.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Events:
+        GetProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/profile
+            Method: GET
+        PostAuthProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/auth/profile
+            Method: POST
 
   IngestFunction:
     Type: AWS::Serverless::Function
