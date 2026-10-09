@@ -1,18 +1,16 @@
-"""
-GET /v1/health
-Health check endpoint.
-"""
-
 import json
+import os
 from datetime import datetime, timezone
 
-from common.responses import success_response
-
-
 def handler(event, context):
-    """Health check - no auth required."""
-    return success_response({
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "0.1.0",
-    })
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps({
+            "ok": True,
+            "stage": os.environ.get("STAGE", "unknown"),
+            "time": datetime.now(timezone.utc).isoformat()
+        })
+    }

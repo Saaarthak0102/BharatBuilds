@@ -53,3 +53,12 @@ playwright-report/
 # Misc
 *.log
 *.tsbuildinfo
+
+# Added by agent
+.aws-sam/
+infra/samconfig.toml
+.env
+.env.*
+.venv/
+__pycache__/
+*.tsbuildinfo

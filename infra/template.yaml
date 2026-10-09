@@ -1,446 +1,56 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  Saans - Agent-driven air quality platform for the Delhi stubble-burning smog season.
-  WeMakeDevs x AWS Environmental Hacks, Air track.
+Description: Saans API with SAM
 
 Parameters:
   Stage:
     Type: String
     Default: dev
-    AllowedValues: [dev, staging, prod]
-  BedrockModelId:
-    Type: String
-    Default: anthropic.claude-3-sonnet-20240229-v1:0
+    AllowedValues:
+      - dev
+      - staging
+      - prod
 
 Globals:
   Function:
     Runtime: python3.12
-    Timeout: 30
+    Timeout: 15
     MemorySize: 256
     Environment:
       Variables:
         STAGE: !Ref Stage
-        USERS_TABLE: !Ref UsersTable
-        REPORTS_TABLE: !Ref ReportsTable
-        MACHINE_SLOTS_TABLE: !Ref MachineSlotsTable
-        STRAW_OUTLETS_TABLE: !Ref StrawOutletsTable
-        SUBSCRIPTIONS_TABLE: !Ref SubscriptionsTable
-        DATA_CACHE_TABLE: !Ref DataCacheTable
-        AGENT_RUNS_TABLE: !Ref AgentRunsTable
-        REPORTS_BUCKET: !Ref ReportsBucket
-        CACHE_BUCKET: !Ref CacheBucket
-        ALERTS_TOPIC_ARN: !Ref AlertsTopic
-        COGNITO_USER_POOL_ID: !Ref CognitoUserPool
-        COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
-        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        LOG_LEVEL: INFO
 
 Resources:
-  # ─── Cognito ─────────────────────────────────────────────
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: !Sub saans-users-${Stage}
-      AutoVerifiedAttributes:
-        - email
-      UsernameAttributes:
-        - email
-      Schema:
-        - Name: role
-          AttributeDataType: String
-          Mutable: true
-          StringAttributeConstraints:
-            MinLength: '6'
-            MaxLength: '7'
-        - Name: email
-          AttributeDataType: String
-          Required: true
-          Mutable: true
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireUppercase: false
-          RequireSymbols: false
-
-  CognitoUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      ClientName: !Sub saans-web-${Stage}
-      UserPoolId: !Ref CognitoUserPool
-      GenerateSecret: false
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-      ReadAttributes:
-        - email
-        - custom:role
-      WriteAttributes:
-        - email
-        - custom:role
-
-  # ─── API Gateway ─────────────────────────────────────────
   SaansApi:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub saans-api-${Stage}
       StageName: !Ref Stage
       Cors:
-        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
-      Auth:
-        DefaultAuthorizer: CognitoAuthorizer
-        Authorizers:
-          CognitoAuthorizer:
-            UserPoolArn: !GetAtt CognitoUserPool.Arn
-
-  # ─── Lambda Functions ───────────────────────────────────
-  FarmerPlanFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-farmer-plan-${Stage}
-      Handler: handlers/farmer_plan.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/farmer/plan
-            Method: POST
-
-  FarmerBookFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-farmer-book-${Stage}
-      Handler: handlers/farmer_book.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/farmer/book
-            Method: POST
-
-  TodayFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-today-${Stage}
-      Handler: handlers/today.handler
-      CodeUri: services/api/
-      Events:
-        Get:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/today
-            Method: GET
-
-  AskFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-ask-${Stage}
-      Handler: handlers/ask.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/ask
-            Method: POST
-
-  MapLayersFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-map-layers-${Stage}
-      Handler: handlers/map_layers.handler
-      CodeUri: services/api/
-      Events:
-        Get:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/map/layers
-            Method: GET
-
-  ReportsUploadUrlFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-reports-upload-url-${Stage}
-      Handler: handlers/reports_upload_url.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/reports/upload-url
-            Method: POST
-
-  ReportsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-reports-${Stage}
-      Handler: handlers/reports.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/reports
-            Method: POST
-        Get:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/reports
-            Method: GET
-
-  SubscriptionsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-subscriptions-${Stage}
-      Handler: handlers/subscriptions.handler
-      CodeUri: services/api/
-      Events:
-        Post:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/subscriptions
-            Method: POST
-
-  ProfileFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-profile-${Stage}
-      Handler: handlers/profile.handler
-      CodeUri: services/api/
-      Events:
-        CreateProfile:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/auth/profile
-            Method: POST
-        GetProfile:
-          Type: Api
-          Properties:
-            RestApiId: !Ref SaansApi
-            Path: /v1/profile
-            Method: GET
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
 
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub saans-health-${Stage}
-      Handler: handlers/health.handler
-      CodeUri: services/api/
+      CodeUri: ../services/
+      Handler: api.handlers.health.handler
       Events:
-        Get:
+        GetHealth:
           Type: Api
           Properties:
             RestApiId: !Ref SaansApi
             Path: /v1/health
             Method: GET
-            Auth:
-              Authorizer: NONE
-
-  # ─── Ingest Functions ───────────────────────────────────
-  IngestFirmsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-ingest-firms-${Stage}
-      Handler: firms.handler
-      CodeUri: services/ingest/
-      Timeout: 60
-      Events:
-        Schedule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(4 hours)
-            Description: Fetch FIRMS fire hotspot data
-
-  IngestWeatherFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-ingest-weather-${Stage}
-      Handler: open_meteo.handler
-      CodeUri: services/ingest/
-      Timeout: 60
-      Events:
-        Schedule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(6 hours)
-            Description: Fetch Open-Meteo weather data
-
-  IngestAqiFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub saans-ingest-aqi-${Stage}
-      Handler: aqi.handler
-      CodeUri: services/ingest/
-      Timeout: 60
-      Events:
-        Schedule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(1 hour)
-            Description: Fetch AQI data from CPCB/OpenAQ
-
-  # ─── DynamoDB Tables ────────────────────────────────────
-  UsersTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-users-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: user_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: user_id
-          KeyType: HASH
-
-  ReportsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-reports-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: report_id
-          AttributeType: S
-        - AttributeName: geohash
-          AttributeType: S
-      KeySchema:
-        - AttributeName: report_id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: geohash-index
-          KeySchema:
-            - AttributeName: geohash
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-
-  MachineSlotsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-machine-slots-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: village_id
-          AttributeType: S
-        - AttributeName: date
-          AttributeType: S
-      KeySchema:
-        - AttributeName: village_id
-          KeyType: HASH
-        - AttributeName: date
-          KeyType: RANGE
-
-  StrawOutletsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-straw-outlets-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: district_id
-          AttributeType: S
-        - AttributeName: outlet_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: district_id
-          KeyType: HASH
-        - AttributeName: outlet_id
-          KeyType: RANGE
-
-  SubscriptionsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-subscriptions-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: subscription_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: subscription_id
-          KeyType: HASH
-
-  DataCacheTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-data-cache-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: source
-          AttributeType: S
-        - AttributeName: cache_key
-          AttributeType: S
-      KeySchema:
-        - AttributeName: source
-          KeyType: HASH
-        - AttributeName: cache_key
-          KeyType: RANGE
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-
-  AgentRunsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub saans-agent-runs-${Stage}
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: run_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: run_id
-          KeyType: HASH
-
-  # ─── S3 Buckets ─────────────────────────────────────────
-  ReportsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub saans-reports-photos-${Stage}-${AWS::AccountId}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders: ['*']
-            AllowedMethods: [PUT]
-            AllowedOrigins: ['*']
-            MaxAge: 300
-
-  CacheBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub saans-cache-${Stage}-${AWS::AccountId}
-
-  # ─── SNS ────────────────────────────────────────────────
-  AlertsTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub saans-alerts-${Stage}
 
 Outputs:
   ApiUrl:
-    Description: API Gateway URL
-    Value: !Sub https://${SaansApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}
-  CognitoUserPoolId:
-    Description: Cognito User Pool ID
-    Value: !Ref CognitoUserPool
-  CognitoClientId:
-    Description: Cognito User Pool Client ID
-    Value: !Ref CognitoUserPoolClient
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${SaansApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
