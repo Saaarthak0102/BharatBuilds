@@ -278,6 +278,35 @@ Resources:
             Auth:
               Authorizer: NONE
 
+  IngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-ingest-${Stage}
+      CodeUri: ../services/
+      Handler: ingest.handler.handler
+      Timeout: 60
+      ReservedConcurrentExecutions: 1
+      Policies:
+        - Statement:
+            - Sid: DataCacheAccessOnly
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:BatchWriteItem
+                - dynamodb:BatchGetItem
+              Resource: !GetAtt DataCacheTable.Arn
+      Events:
+        IngestSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(3 hours)
+            Description: Ingest weather and environmental data every 3 hours
+            Enabled: true
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
@@ -315,3 +344,6 @@ Outputs:
   AgentRunsTable:
     Description: DynamoDB AgentRuns table name
     Value: !Ref AgentRunsTable
+  IngestFunction:
+    Description: Lambda function ARN for data ingestion
+    Value: !GetAtt IngestFunction.Arn

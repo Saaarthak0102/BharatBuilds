@@ -10,7 +10,10 @@ def handler(event, context):
         },
         "body": json.dumps({
             "ok": True,
-            "stage": os.environ.get("STAGE", "unknown"),
-            "time": datetime.now(timezone.utc).isoformat()
+            "data": {
+                "status": "healthy",
+                "stage": os.environ.get("STAGE", "unknown"),
+                "time": datetime.now(timezone.utc).isoformat()
+            }
         })
     }
