@@ -60,7 +60,11 @@ def error_response(error_or_status, message=None, correlation_id=None):
             else (
                 "Forbidden"
                 if status_code == 403
-                else ("Unauthorized" if status_code == 401 else "InternalServerError")
+                else (
+                    "Unauthorized"
+                    if status_code == 401
+                    else ("NotFound" if status_code == 404 else "InternalServerError")
+                )
             )
         )
         err_dict = {

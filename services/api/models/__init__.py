@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 
 
 class Role(str, Enum):
@@ -55,18 +55,55 @@ class AQICategory(str, Enum):
 class User(BaseModel):
     user_id: str
     role: Role
-    name: str
+    name: str = ""
     phone: Optional[str] = None
     email: Optional[str] = None
     language: str = "en"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Union[datetime, str] = Field(default_factory=datetime.utcnow)
+
+
+class FarmerProfileInput(BaseModel):
+    """Input validation for POST /v1/auth/profile when caller role is farmer."""
+    model_config = ConfigDict(extra="forbid")
+
+    village_id: str = Field(validation_alias=AliasChoices("village_id", "village"))
+    village_name: Optional[str] = None
+    district: str
+    land_size_acres: float = Field(validation_alias=AliasChoices("land_size_acres", "land_size"))
+    main_crop: str = Field(validation_alias=AliasChoices("main_crop", "crop"))
+    crop_stage: CropStage
+    has_own_machine: bool = False
+    language: str = "pa"
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class CitizenProfileInput(BaseModel):
+    """Input validation for POST /v1/auth/profile when caller role is citizen."""
+    model_config = ConfigDict(extra="forbid")
+
+    area_id: str = Field(validation_alias=AliasChoices("area_id", "area", "ward", "area_ward"))
+    area_name: Optional[str] = None
+    language: str = "en"
+    alert_opt_in: Optional[bool] = None
+    alert_threshold: Optional[int] = None
+    household_note: Optional[str] = None
+    has_kids: bool = False
+    has_elderly: bool = False
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+FarmerProfileCreate = FarmerProfileInput
+CitizenProfileCreate = CitizenProfileInput
 
 
 class FarmerProfile(BaseModel):
     user_id: str
     role: Role = Role.FARMER
-    name: str
-    phone: str
+    name: str = ""
+    phone: Optional[str] = None
     language: str = "pa"
     village_id: str
     village_name: Optional[str] = None
@@ -75,24 +112,26 @@ class FarmerProfile(BaseModel):
     main_crop: str
     crop_stage: CropStage
     has_own_machine: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    is_sample: bool = True
+    created_at: Union[datetime, str] = Field(default_factory=datetime.utcnow)
+    is_sample: bool = False
 
 
 class CitizenProfile(BaseModel):
     user_id: str
     role: Role = Role.CITIZEN
-    name: str
+    name: str = ""
     email: Optional[str] = None
     phone: Optional[str] = None
     language: str = "en"
     area_id: str
     area_name: Optional[str] = None
+    alert_opt_in: Optional[bool] = None
     alert_threshold: Optional[int] = None
+    household_note: Optional[str] = None
     has_kids: bool = False
     has_elderly: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    is_sample: bool = True
+    created_at: Union[datetime, str] = Field(default_factory=datetime.utcnow)
+    is_sample: bool = False
 
 
 # --- Report models ---
