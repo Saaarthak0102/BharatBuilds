@@ -262,7 +262,11 @@ function SignupFlow() {
             disabled={verifying || !otpCode.trim()}
             className="w-full mt-6 flex justify-center py-2.5"
           >
-            {verifying ? 'Verifying & Setting up Profile...' : 'Verify & Complete Registration'}
+            {verifying
+              ? 'Verifying & Setting up Profile...'
+              : error.includes('profile setup failed')
+                ? 'Retry Profile Setup'
+                : 'Verify & Complete Registration'}
           </PillButton>
         </form>
 
