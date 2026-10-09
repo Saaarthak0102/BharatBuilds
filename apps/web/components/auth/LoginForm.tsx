@@ -21,8 +21,9 @@ export function LoginForm() {
     try {
       const session = await login({ email, password });
       router.push(getDashboardPath(session.role));
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setError(message);
     }
   };
 

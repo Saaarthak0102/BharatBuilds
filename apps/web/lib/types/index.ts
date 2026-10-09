@@ -235,6 +235,7 @@ export interface Session {
   phone?: string;
   language: Language;
   is_authenticated: boolean;
+  idToken?: string;
 }
 
 // ─── Village / Ward (for search dropdowns) ──────────────

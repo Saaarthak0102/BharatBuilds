@@ -7,7 +7,7 @@ export default function LoginPage() {
     <AuthShell>
       <LoginForm />
       <p className="mt-6 text-center text-sm text-text-secondary">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link href="/signup" className="text-brand-600 hover:text-brand-700 font-medium">
           Sign up
         </Link>

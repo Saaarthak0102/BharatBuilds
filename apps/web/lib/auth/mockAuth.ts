@@ -17,6 +17,7 @@ export interface SignupData {
   language: Language;
   // Farmer-specific
   village_id?: string;
+  village_name?: string;
   district?: string;
   land_size_acres?: number;
   main_crop?: string;
@@ -24,7 +25,10 @@ export interface SignupData {
   has_own_machine?: boolean;
   // Citizen-specific
   area_id?: string;
+  area_name?: string;
   alert_threshold?: number;
+  alert_opt_in?: boolean;
+  household_note?: string;
   has_kids?: boolean;
   has_elderly?: boolean;
 }
@@ -47,6 +51,7 @@ export function mockSignup(data: SignupData): Session {
     phone: data.phone,
     language: data.language,
     is_authenticated: true,
+    idToken: 'mock-id-token-' + Math.random().toString(36).substring(2, 10),
   };
 
   if (typeof window !== 'undefined') {
@@ -61,7 +66,7 @@ export function mockLogin(data: LoginData): Session {
   // Check if there's an existing session first
   const existing = getSession();
   if (existing) {
-    return { ...existing, is_authenticated: true };
+    return { ...existing, is_authenticated: true, idToken: existing.idToken || 'mock-id-token' };
   }
 
   // Create a default citizen session
@@ -72,6 +77,7 @@ export function mockLogin(data: LoginData): Session {
     email: data.email,
     language: 'en',
     is_authenticated: true,
+    idToken: 'mock-id-token-' + Math.random().toString(36).substring(2, 10),
   };
 
   if (typeof window !== 'undefined') {

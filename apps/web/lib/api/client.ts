@@ -2,7 +2,6 @@ import { API_ENDPOINTS } from './endpoints';
 import * as mockData from '../mock/farmerPlan';
 import { mockToday } from '../mock/today';
 import { mockReports } from '../mock/reports';
-import { mockMachineSlots } from '../mock/machineSlots';
 import { mockStrawOutlets } from '../mock/strawOutlets';
 import { mockMapLayers } from '../mock/mapLayers';
 import { authClient } from '../auth/authClient';
@@ -12,20 +11,38 @@ const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  // In a real app with Cognito, we would get the JWT token here
-  // const session = await authClient.getSession();
-  // const token = session?.idToken;
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    // ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+  let token: string | null = null;
+  try {
+    token = await authClient.getIdToken();
+  } catch {
+    token = authClient.getSession()?.idToken || null;
+  }
+
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
     headers,
   });
+
+  if (response.status === 401) {
+    try {
+      await authClient.logout();
+    } catch {
+      // ignore
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || 'Unauthorized');
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
