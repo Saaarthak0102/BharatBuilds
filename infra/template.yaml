@@ -29,6 +29,8 @@ Globals:
         SUBSCRIPTIONS_TABLE: !Ref SubscriptionsTable
         DATA_CACHE_TABLE: !Ref DataCacheTable
         AGENT_RUNS_TABLE: !Ref AgentRunsTable
+        FIRMS_API_KEY_PARAM: !Sub /saans/${Stage}/firms-api-key
+        OPENAQ_API_KEY_PARAM: !Sub /saans/${Stage}/openaq-api-key
 
 Resources:
   # ─── DynamoDB Tables ─────────────────────────────────────
@@ -260,14 +262,16 @@ Resources:
       GatewayResponses:
         DEFAULT_4XX:
           ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
         DEFAULT_5XX:
           ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -501,6 +505,13 @@ Resources:
                 - dynamodb:BatchWriteItem
                 - dynamodb:BatchGetItem
               Resource: !GetAtt DataCacheTable.Arn
+            - Sid: SSMParameterAccess
+              Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saans/${Stage}/firms-api-key
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saans/${Stage}/openaq-api-key
       Events:
         IngestSchedule:
           Type: Schedule

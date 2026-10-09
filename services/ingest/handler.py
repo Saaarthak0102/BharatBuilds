@@ -14,12 +14,12 @@ import logging
 from typing import Any
 
 try:
-    from services.ingest import cache, open_meteo
+    from services.ingest import cache, open_meteo, firms, aqi
 except (ImportError, ModuleNotFoundError):
     try:
-        from ingest import cache, open_meteo  # type: ignore
+        from ingest import cache, open_meteo, firms, aqi  # type: ignore
     except (ImportError, ModuleNotFoundError):
-        import cache, open_meteo  # type: ignore
+        import cache, open_meteo, firms, aqi  # type: ignore
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -91,8 +91,28 @@ def handler(event: dict[str, Any] | None, context: Any = None) -> dict[str, Any]
         except Exception as exc:
             logger.warning("Failed to cache aggregated weather list: %s", exc)
 
+    # Ingest FIRMS
+    firms_ok = False
+    try:
+        res = firms.ingest(cache.cache_to_dynamo)
+        firms_ok = res.get("status") == "success"
+        logger.info("Successfully ingested FIRMS data")
+    except Exception as exc:
+        logger.error("Failed to ingest FIRMS data: %s", exc)
+        errors.append(f"FIRMS ingest failed: {exc}")
+
+    # Ingest AQI
+    aqi_ok = False
+    try:
+        res = aqi.ingest(cache.cache_to_dynamo)
+        aqi_ok = res.get("status") == "success"
+        logger.info("Successfully ingested AQI data")
+    except Exception as exc:
+        logger.error("Failed to ingest AQI data: %s", exc)
+        errors.append(f"AQI ingest failed: {exc}")
+
     response_body = {
-        "ok": len(cached_records) > 0,
+        "ok": len(cached_records) > 0 and firms_ok and aqi_ok,
         "source": open_meteo.SOURCE_NAME,
         "locations_attempted": len(seed_locations),
         "locations_updated": len(locations_updated),
@@ -102,7 +122,10 @@ def handler(event: dict[str, Any] | None, context: Any = None) -> dict[str, Any]
         "timestamp": now_iso,
     }
 
-    status_code = 200 if len(cached_records) > 0 else 500
+    status_code = 200 if response_body["ok"] else 500
+    if len(cached_records) > 0 or firms_ok or aqi_ok:
+        status_code = 200 # Partial success is still 200 to avoid complete failure loop if one fails
+        
     return {
         "statusCode": status_code,
         "headers": {

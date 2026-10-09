@@ -9,6 +9,20 @@
 | CPCB | AQI (Delhi NCR stations) | Varies | Unreliable availability. Fallback to OpenAQ. |
 | OpenAQ | AQI (global) | https://api.openaq.org/ | Free tier available. Fallback for CPCB. |
 
+## Air Quality Index (NAQI) Breakpoints
+
+Indian National Air Quality Index (NAQI) categories based on CPCB guidelines.
+Source: [CPCB NAQI Document](https://cpcb.nic.in/upload/Downloads/AQI_Bulletin_2015.pdf)
+
+| AQI Category | AQI Range | PM10 (24-hr) | PM2.5 (24-hr) |
+| --- | --- | --- | --- |
+| **Good** | 0 – 50 | 0 – 50 | 0 – 30 |
+| **Satisfactory** | 51 – 100 | 51 – 100 | 31 – 60 |
+| **Moderate** | 101 – 200 | 101 – 250 | 61 – 90 |
+| **Poor** | 201 – 300 | 251 – 350 | 91 – 120 |
+| **Very Poor** | 301 – 400 | 351 – 430 | 121 – 250 |
+| **Severe** | 401 – 500 | 430+ | 250+ |
+
 ## Seeded Sample Data (currently in use)
 
 All sample data is clearly marked with `is_sample: true` and displayed with a "Sample data" badge in the UI.
