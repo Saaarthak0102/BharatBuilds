@@ -285,7 +285,6 @@ Resources:
       CodeUri: ../services/
       Handler: ingest.handler.handler
       Timeout: 60
-      ReservedConcurrentExecutions: 1
       Policies:
         - Statement:
             - Sid: DataCacheAccessOnly
