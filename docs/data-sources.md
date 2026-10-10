@@ -14,14 +14,14 @@
 Indian National Air Quality Index (NAQI) categories based on CPCB guidelines.
 Source: [CPCB NAQI Document](https://cpcb.nic.in/upload/Downloads/AQI_Bulletin_2015.pdf)
 
-| AQI Category | AQI Range | PM10 (24-hr) | PM2.5 (24-hr) |
-| --- | --- | --- | --- |
-| **Good** | 0 – 50 | 0 – 50 | 0 – 30 |
-| **Satisfactory** | 51 – 100 | 51 – 100 | 31 – 60 |
-| **Moderate** | 101 – 200 | 101 – 250 | 61 – 90 |
-| **Poor** | 201 – 300 | 251 – 350 | 91 – 120 |
-| **Very Poor** | 301 – 400 | 351 – 430 | 121 – 250 |
-| **Severe** | 401 – 500 | 430+ | 250+ |
+| AQI Category | AQI Range | PM10 (24-hr) | PM2.5 (24-hr) | Health Advice (CPCB Standard) |
+| --- | --- | --- | --- | --- |
+| **Good** | 0 – 50 | 0 – 50 | 0 – 30 | Air quality is satisfactory, and air pollution poses little or no risk. |
+| **Satisfactory** | 51 – 100 | 51 – 100 | 31 – 60 | Minor breathing discomfort to sensitive people. |
+| **Moderate** | 101 – 200 | 101 – 250 | 61 – 90 | Breathing discomfort to the people with lungs, asthma and heart diseases. |
+| **Poor** | 201 – 300 | 251 – 350 | 91 – 120 | Breathing discomfort to most people on prolonged exposure. |
+| **Very Poor** | 301 – 400 | 351 – 430 | 121 – 250 | Respiratory illness on prolonged exposure. |
+| **Severe** | 401 – 500 | 430+ | 250+ | Affects healthy people and seriously impacts those with existing diseases. |
 
 ## Seeded Sample Data (currently in use)
 

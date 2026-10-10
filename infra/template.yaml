@@ -43,6 +43,7 @@ Globals:
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         BEDROCK_VISION_MODEL_ID: !Ref BedrockVisionModelId
         BEDROCK_REGION: !Ref AWS::Region
+        ALERTS_TOPIC_ARN: !Ref AlertsTopic
 
 Resources:
   AgentBedrockPolicy:
@@ -59,6 +60,11 @@ Resources:
               - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
               - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockVisionModelId}
               - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockVisionModelId}
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub saans-alerts-${Stage}
 
   # ─── DynamoDB Tables ─────────────────────────────────────
   UsersTable:
@@ -490,6 +496,14 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SubscriptionsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertsTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Subscribe
+                - sns:Unsubscribe
+              Resource: !Ref AlertsTopic
       Events:
         PostSubscriptions:
           Type: Api
@@ -497,6 +511,18 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/subscriptions
             Method: POST
+        GetSubscriptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/subscriptions
+            Method: GET
+        DeleteSubscriptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/subscriptions
+            Method: DELETE
 
   ProfileFunction:
     Type: AWS::Serverless::Function
