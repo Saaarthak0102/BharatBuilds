@@ -6,22 +6,22 @@ The burn-window planner scores each of the next 7 days from 0 to 100 using trans
 
 ## Factors and Weights
 
-| Factor | Max Points | Description |
-| --- | --- | --- |
-| Sowing Window | 25 | Is the day within the recommended clearing/sowing window for the crop stage? |
-| Rain & Soil | 20 | Will rain or wet soil prevent machinery from operating? |
-| Wind | 20 | Will wind carry smoke toward populated areas (Delhi NCR)? |
-| Fire Activity | 15 | How many active fire hotspots are in the district? |
-| Machine Availability | 20 | Is a machine slot (Happy Seeder, rotavator, etc.) available? |
-| **Total** | **100** | |
+All weights and thresholds currently have `source: "TO_VERIFY"`. They must be verified against official Punjab Agricultural University (PAU) guidance.
 
-## Detailed Rules
+| Factor | Max Points | Description | Source |
+| --- | --- | --- | --- |
+| Sowing Window | 25 | Is the day within the recommended clearing/sowing window for the crop stage? | TO_VERIFY |
+| Rain & Soil | 20 | Will rain or wet soil prevent machinery from operating? | TO_VERIFY |
+| Wind | 20 | Will wind carry smoke toward populated areas (Delhi NCR)? | TO_VERIFY |
+| Fire Activity | 15 | How many active fire hotspots are in the district? | TO_VERIFY |
+| Machine Availability | 20 | Is a machine slot (Happy Seeder, rotavator, etc.) available? | TO_VERIFY |
+| **Total** | **100** | | |
+
+## Detailed Rules (All TO_VERIFY)
 
 ### Sowing Window (0-25 points)
 - Day within recommended window: **25 points**
-- Day outside window: **0 points**
-- Window dates depend on crop stage and are seeded from Punjab Agricultural University (PAU) guidance
-- **TODO:** Verify window dates against official PAU publications
+- Day outside window: **0 points** (Hard cap penalty applied)
 
 ### Rain & Soil (0-20 points)
 - Precipitation < 2mm: **20 points** (clear, machinery can operate)
@@ -34,7 +34,7 @@ The burn-window planner scores each of the next 7 days from 0 to 100 using trans
 - Wind speed 10-20 km/h: **12 points** (moderate)
 - Wind speed 20-35 km/h: **5 points** (risky)
 - Wind speed > 35 km/h: **0 points** (dangerous)
-- **Extra penalty:** -10 if wind direction carries smoke toward Delhi/major cities
+- **Extra penalty:** -10 if wind direction carries smoke toward Delhi/major cities (`carries_toward_city: true`)
 
 ### Fire Activity (0-15 points)
 - Hotspot count < 5: **15 points** (low activity)
@@ -46,20 +46,13 @@ The burn-window planner scores each of the next 7 days from 0 to 100 using trans
 - Machine slot available: **20 points**
 - Limited slots (≤ 2 remaining): **10 points**
 - No machine available: **0 points**
-- Straw outlet fallback used when score is 0
 
 ## Fallback Logic
 
-When no machine is available for any day in the scoring window:
-1. Use the highest-scored day regardless
-2. Present straw outlets (plants, depots, aggregators) as the fallback
-3. Display: "Contact your nearest depot or aggregator"
-4. All straw outlet data is sample data with `is_sample: true`
+When no machine is available for the best scored day, `replan()` will pick the next best day with a machine. If no machine is available at all in the 7 days:
+1. Present straw outlets (plants, depots, aggregators) as the fallback for the highest-scored day.
+2. Display: "Contact your nearest depot or aggregator"
+3. All straw outlet data is sample data with `is_sample: true`
 
 ## Configuration
-
-Weights and thresholds are stored in `services/agents/planner/scoring_config.yaml` for transparency.
-
-## Source Note
-
-> Thresholds are initial estimates for development. They must be verified against official Punjab Agricultural University (PAU) guidance before being relied upon for real recommendations. All advice is labeled as guidance, not directives.
+Weights and thresholds are stored in `services/agents/planner/scoring_config.yaml`.

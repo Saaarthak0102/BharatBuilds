@@ -10,6 +10,12 @@ Parameters:
       - dev
       - staging
       - prod
+  BedrockModelId:
+    Type: String
+    Description: Bedrock text model ID or Inference Profile ID
+  BedrockVisionModelId:
+    Type: String
+    Description: Bedrock vision model ID or Inference Profile ID
 
 Globals:
   Function:
@@ -33,8 +39,27 @@ Globals:
         AGENT_RUNS_TABLE: !Ref AgentRunsTable
         FIRMS_API_KEY_PARAM: !Sub /saans/${Stage}/firms-api-key
         OPENAQ_API_KEY_PARAM: !Sub /saans/${Stage}/openaq-api-key
+        MODEL_PROVIDER: "bedrock"
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        BEDROCK_VISION_MODEL_ID: !Ref BedrockVisionModelId
+        BEDROCK_REGION: !Ref AWS::Region
 
 Resources:
+  AgentBedrockPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for agent functions to invoke Bedrock models
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: bedrock:InvokeModel
+            Resource:
+              - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+              - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+              - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockVisionModelId}
+              - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockVisionModelId}
+
   # ─── DynamoDB Tables ─────────────────────────────────────
   UsersTable:
     Type: AWS::DynamoDB::Table
@@ -302,7 +327,10 @@ Resources:
       FunctionName: !Sub saans-farmer-plan-${Stage}
       CodeUri: ../services/
       Handler: api.handlers.farmer_plan.handler
+      Timeout: 25
+      MemorySize: 512
       Policies:
+        - !Ref AgentBedrockPolicy
         - DynamoDBReadPolicy:
             TableName: !Ref DataCacheTable
         - DynamoDBReadPolicy:

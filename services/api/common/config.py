@@ -34,13 +34,18 @@ class Config:
     COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "")
 
     # Bedrock
-    BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
+    MODEL_PROVIDER = os.environ.get("MODEL_PROVIDER", "bedrock")
+    BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "")
+    BEDROCK_VISION_MODEL_ID = os.environ.get("BEDROCK_VISION_MODEL_ID", "")
+    BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 
     # Agent limits
-    MAX_AGENT_STEPS = int(os.environ.get("MAX_AGENT_STEPS", "10"))
-    AGENT_TIMEOUT_SECONDS = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "30"))
+    MAX_AGENT_STEPS = int(os.environ.get("MAX_AGENT_STEPS", "8"))
+    AGENT_TIMEOUT_SECONDS = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "20"))
 
     # Rate limits
+    RATELIMIT_USER_PER_DAY = int(os.environ.get("RATELIMIT_USER_PER_DAY", "30"))
+    RATELIMIT_GLOBAL_PER_DAY = int(os.environ.get("RATELIMIT_GLOBAL_PER_DAY", "500"))
     MAX_REPORTS_PER_USER_PER_HOUR = int(os.environ.get("MAX_REPORTS_PER_USER_PER_HOUR", "5"))
     MAX_PLAN_REQUESTS_PER_USER_PER_HOUR = int(os.environ.get("MAX_PLAN_REQUESTS_PER_USER_PER_HOUR", "10"))
 

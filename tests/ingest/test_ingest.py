@@ -237,11 +237,11 @@ class TestIngestHandler:
             "forecast": [{"date": "2026-10-09", "temp_max_c": 32.0}],
         }
 
-        with patch("services.ingest.open_meteo.get_seed_locations", return_value=[{"id": "village-patiala-001", "name": "Rajpura"}]), \
-             patch("services.ingest.open_meteo.fetch_location", return_value=mock_weather), \
-             patch("services.ingest.firms.ingest", return_value={"status": "success"}), \
-             patch("services.ingest.aqi.ingest", return_value={"status": "success"}), \
-             patch("services.ingest.cache.cache_to_dynamo") as mock_cache:
+        with patch("ingest.open_meteo.get_seed_locations", return_value=[{"id": "village-patiala-001", "name": "Rajpura"}]), \
+             patch("ingest.open_meteo.fetch_location", return_value=mock_weather), \
+             patch("ingest.firms.ingest", return_value={"status": "success"}), \
+             patch("ingest.aqi.ingest", return_value={"status": "success"}), \
+             patch("ingest.cache.cache_to_dynamo") as mock_cache:
 
             res = handler.handler({}, None)
             assert res["statusCode"] == 200
@@ -270,12 +270,12 @@ class TestIngestHandler:
         loc = {"id": "village-patiala-001", "name": "Rajpura"}
         last_good_payload = {"id": "village-patiala-001", "name": "Rajpura", "fallback": True}
 
-        with patch("services.ingest.open_meteo.get_seed_locations", return_value=[loc]), \
-             patch("services.ingest.open_meteo.fetch_location", side_effect=Exception("API timeout")), \
-             patch("services.ingest.cache.get_last_good", return_value={"payload": last_good_payload}), \
-             patch("services.ingest.firms.ingest", return_value={"status": "success"}), \
-             patch("services.ingest.aqi.ingest", return_value={"status": "success"}), \
-             patch("services.ingest.cache.cache_to_dynamo") as mock_cache:
+        with patch("ingest.open_meteo.get_seed_locations", return_value=[loc]), \
+             patch("ingest.open_meteo.fetch_location", side_effect=Exception("API timeout")), \
+             patch("ingest.cache.get_last_good", return_value={"payload": last_good_payload}), \
+             patch("ingest.firms.ingest", return_value={"status": "success"}), \
+             patch("ingest.aqi.ingest", return_value={"status": "success"}), \
+             patch("ingest.cache.cache_to_dynamo") as mock_cache:
 
             res = handler.handler({}, None)
             assert res["statusCode"] == 200

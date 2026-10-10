@@ -54,60 +54,40 @@ def handler(event, context):
 
         if not village_id or not crop_stage:
             raise ValidationError("village_id and crop_stage are required")
+            
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', village_id):
+            raise ValidationError("Invalid village_id format")
 
         if crop_stage not in ("harvested", "partially_cleared", "standing"):
             raise ValidationError("crop_stage must be one of: harvested, partially_cleared, standing")
 
-        # TODO: Call the Strands planner agent here
-        # For now, return mock data
-        mock_result = {
-            "best_day": "2024-11-05",
-            "score": 82,
-            "score_breakdown": {
-                "sowing_window": 20,
-                "rain_and_soil": 18,
-                "wind": 15,
-                "fire_activity": 14,
-                "machine_availability": 15,
-            },
-            "machine_option": {
-                "slot_id": "slot-001",
-                "machine_type": "Happy Seeder",
-                "owner_label": "Kisan Seva Kendra, Patiala",
-                "date": "2024-11-05",
-                "is_sample": True,
-            },
-            "straw_outlet_option": None,
-            "reason_text": _get_reason_text(language),
-            "tool_trace": [
-                {"tool": "get_forecast", "status": "ok", "latency_ms": 120},
-                {"tool": "get_wind", "status": "ok", "latency_ms": 95},
-                {"tool": "get_fire_hotspots", "status": "ok", "latency_ms": 150},
-                {"tool": "get_sowing_window", "status": "ok", "latency_ms": 10},
-                {"tool": "find_machine_slots", "status": "ok", "latency_ms": 80},
-            ],
-            "seven_day_scores": [
-                {"date": "2024-11-03", "score": 45},
-                {"date": "2024-11-04", "score": 68},
-                {"date": "2024-11-05", "score": 82},
-                {"date": "2024-11-06", "score": 74},
-                {"date": "2024-11-07", "score": 60},
-                {"date": "2024-11-08", "score": 55},
-                {"date": "2024-11-09", "score": 71},
-            ],
-            "is_sample": True,
-        }
-
-        return success_response(mock_result, correlation_id=correlation_id)
-
+        # Rate limiting (e.g., max 5 requests per minute)
+        from api.common.ratelimit import check_rate_limit
+        user_id = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}).get("sub", "anonymous")
+        check_rate_limit(f"plan_{user_id}", limit=5, window_seconds=60)
+        
+        from agents.planner.agent import run_planner
+        import time
+        
+        start_t = time.time()
+        result, outcome = run_planner(village_id=village_id, crop_stage=crop_stage, language=language, user_id=user_id)
+        latency = int((time.time() - start_t) * 1000)
+        
+        from agents.common.runner import write_agent_run
+        run_id = str(uuid.uuid4())
+        write_agent_run(run_id, result.get("tool_trace", []), latency, outcome)
+        
+        return success_response(result, correlation_id=correlation_id)
+        
     except ValidationError as e:
         return error_response(400, str(e), correlation_id=correlation_id)
-    except AgentError as e:
-        logger.error("agent_error", error=str(e), correlation_id=correlation_id)
-        return error_response(500, "Planner agent failed", correlation_id=correlation_id)
     except Exception as e:
         logger.error("unexpected_error", error=str(e), correlation_id=correlation_id)
-        return error_response(500, "Internal server error", correlation_id=correlation_id)
+        # Attempt a fallback response even if something at the handler level broke
+        from agents.planner.agent import _fallback_result
+        result, outcome = _fallback_result(village_id, crop_stage, language, str(e), [])
+        return success_response(result, correlation_id=correlation_id)
 
 
 def _get_reason_text(language: str) -> str:

@@ -1,49 +1,48 @@
-# Planner Scoring Configuration
-# Weights and thresholds for the burn-window day scorer.
-#
-# IMPORTANT: Thresholds must be verified against official Punjab Agricultural
-# University (PAU) guidance before being relied upon for recommendations.
-# Current values are initial estimates for development only.
-
-weights:
-  # Maximum points each factor can contribute (total = 100)
-  sowing_window: 25      # Is the day within the recommended sowing window?
-  rain_and_soil: 20      # Will rain or wet soil block machinery?
-  wind: 20               # Will wind carry smoke toward populated areas?
-  fire_activity: 15      # How many active fires are in the district?
-  machine_availability: 20  # Is a machine slot available on this day?
-
-thresholds:
-  # Sowing window
-  sowing_window_penalty_outside: 25  # Full penalty if day is outside the window
-
-  # Rain
-  rain_light_mm: 2.0        # Below this: no penalty
-  rain_moderate_mm: 10.0    # Above this: moderate penalty
-  rain_heavy_mm: 25.0       # Above this: full penalty (machinery can't operate)
-
-  # Wind
-  wind_safe_kmh: 10.0       # Below this: safe to clear
-  wind_moderate_kmh: 20.0   # Above this: moderate penalty
-  wind_dangerous_kmh: 35.0  # Above this: full penalty
-  wind_toward_city_extra_penalty: 10  # Extra penalty if wind blows toward Delhi/cities
-
-  # Fire activity
-  fire_low_count: 5         # Below this: low activity, small penalty
-  fire_moderate_count: 20   # Above this: moderate activity
-  fire_high_count: 50       # Above this: high activity, full penalty
-
-  # Machine availability
-  machine_available_bonus: 20   # Full bonus if a slot exists
-  machine_limited_bonus: 10     # Partial bonus if slots are running low
+rules:
+  sowing_window:
+    bonus_inside: 25
+    penalty_outside: 25
+    source: "TO_VERIFY"
+  rain:
+    threshold_light_mm: 2.0
+    score_light: 20
+    threshold_moderate_mm: 10.0
+    score_moderate: 12
+    threshold_heavy_mm: 25.0
+    score_heavy_max: 5
+    score_heavy_over: 0
+    source: "TO_VERIFY"
+  wind:
+    threshold_safe_kmh: 10.0
+    score_safe: 20
+    threshold_moderate_kmh: 20.0
+    score_moderate: 12
+    threshold_dangerous_kmh: 35.0
+    score_dangerous_max: 5
+    score_dangerous_over: 0
+    toward_city_penalty: 10
+    source: "TO_VERIFY"
+  fire:
+    threshold_low: 5
+    score_low: 15
+    threshold_moderate: 20
+    score_moderate: 10
+    threshold_high: 50
+    score_high_max: 5
+    score_high_over: 0
+    source: "TO_VERIFY"
+  machine:
+    bonus_available: 20
+    threshold_limited: 2
+    bonus_limited: 10
+    bonus_none: 0
+    source: "TO_VERIFY"
 
 fallback:
-  # When no machine is available in the best window
   strategy: "straw_outlet"
   message: "Contact your nearest depot or aggregator"
   note: "All straw outlet data is sample data"
 
 metadata:
-  version: "0.1.0"
-  last_reviewed: "2024-10-08"
-  source: "Initial estimates. TODO: Verify against PAU guidance."
+  version: "0.2.0"
+  last_reviewed: "2026-10-10"
