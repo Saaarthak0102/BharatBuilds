@@ -54,7 +54,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export const apiClient = {
   farmer: {
-    plan: async (data: { village_id: string; crop_stage: string; language: string }): Promise<ApiResponse<PlanResult>> => {
+    plan: async (data: { village_id: string; crop_stage: string; language: string; start_date?: string; end_date?: string }): Promise<ApiResponse<PlanResult>> => {
       if (API_MODE === 'mock') {
         return new Promise((resolve) => 
           setTimeout(() => resolve({ data: mockData.mockFarmerPlan }), 1500)

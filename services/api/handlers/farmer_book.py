@@ -99,7 +99,8 @@ def _handle_post(event, context):
                                 'status': {'S': 'PENDING'},
                                 'created_at': {'S': datetime.now(timezone.utc).isoformat()},
                                 'is_sample': {'BOOL': True}
-                            }
+                            },
+                            'ConditionExpression': 'attribute_not_exists(booking_id)'
                         }
                     }
                 ]

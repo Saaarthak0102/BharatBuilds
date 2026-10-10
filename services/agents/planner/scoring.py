@@ -14,7 +14,8 @@ def score_days(
     sowing_window: dict,
     machine_slots: list[dict],
     crop_stage: str,
-    config: dict | None = None
+    config: dict | None = None,
+    requested_window: dict | None = None
 ) -> list[dict]:
     """
     Score the next 7 days deterministically.
@@ -29,6 +30,9 @@ def score_days(
     sw_rules = rules.get("sowing_window", {})
     sw_start = sowing_window.get("start", "1970-01-01")
     sw_end = sowing_window.get("end", "2999-12-31")
+    
+    req_start = requested_window.get("start", "1970-01-01") if requested_window else "1970-01-01"
+    req_end = requested_window.get("end", "2999-12-31") if requested_window else "2999-12-31"
     
     # Rain rules
     r_rules = rules.get("rain", {})
@@ -56,6 +60,8 @@ def score_days(
     
     for day in forecast_7d:
         date = day.get("date")
+        if not (req_start <= date <= req_end):
+            continue
         
         # Sowing window score
         is_in_window = sw_start <= date <= sw_end

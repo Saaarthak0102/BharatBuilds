@@ -51,6 +51,8 @@ def handler(event, context):
         village_id = body.get("village_id")
         crop_stage = body.get("crop_stage")
         language = body.get("language", "en")
+        start_date = body.get("start_date")
+        end_date = body.get("end_date")
 
         if not village_id or not crop_stage:
             raise ValidationError("village_id and crop_stage are required")
@@ -71,7 +73,7 @@ def handler(event, context):
         import time
         
         start_t = time.time()
-        result, outcome = run_planner(village_id=village_id, crop_stage=crop_stage, language=language, user_id=user_id)
+        result, outcome = run_planner(village_id=village_id, crop_stage=crop_stage, language=language, user_id=user_id, start_date=start_date, end_date=end_date)
         latency = int((time.time() - start_t) * 1000)
         
         from agents.common.runner import write_agent_run

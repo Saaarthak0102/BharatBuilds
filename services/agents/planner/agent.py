@@ -37,7 +37,7 @@ class AgentReasoning(BaseModel):
     """Structured output for agent reasoning explanation."""
     reason_text: str = Field(description="2-3 sentences explaining the choice in the requested language")
 
-def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id: str = "anonymous") -> tuple[dict, str]:
+def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id: str = "anonymous", start_date: str | None = None, end_date: str | None = None) -> tuple[dict, str]:
     """
     Run the planner agent.
     Returns: (plan_result_dict, outcome)
@@ -58,11 +58,15 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             system_prompt=open("services/agents/prompts/planner.md").read()
         )
         
+        date_instruction = "today to 7 days from now"
+        if start_date and end_date:
+            date_instruction = f"{start_date} to {end_date}"
+            
         prompt = (
             f"Gather data for village_id='{village_id}'. "
             f"Use district='{village_id}-district'. "
             f"Crop stage is '{crop_stage}'. "
-            f"Machine slots date range is today to 7 days from now."
+            f"Machine slots date range is {date_instruction}."
         )
         agent(prompt)
         
@@ -83,8 +87,14 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
         machine_slots_payload = payloads.get("find_machine_slots", {})
         machine_slots = machine_slots_payload.get("slots", [])
         
-        scored = score_days(forecast_7d, fire_counts, sowing_window, machine_slots, crop_stage)
+        req_window = None
+        if start_date and end_date:
+            req_window = {"start": start_date, "end": end_date}
+            
+        scored = score_days(forecast_7d, fire_counts, sowing_window, machine_slots, crop_stage, requested_window=req_window)
         best = pick_best(scored)
+        if not best:
+            raise ValueError("No feasible dates available.")
         
         if not best.get("machine_available"):
             best, _ = replan(scored, no_machine=True)
