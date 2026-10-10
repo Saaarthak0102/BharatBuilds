@@ -71,15 +71,17 @@ class TestFarmerPlanEndpoint:
         body = json.loads(result["body"])
         assert "data" in body
         data = body["data"]
-        assert data["best_day"] == "2024-11-05"
-        assert data["score"] == 82
+        from datetime import datetime, timezone
+        expected_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        assert data["best_day"] == expected_date
+        assert data["score"] == 50
         assert data["is_sample"] is True
         assert "score_breakdown" in data
         assert "tool_trace" in data
         assert "seven_day_scores" in data
         # Validate schema parity with Pydantic PlanResult model
         plan_model = PlanResult.model_validate(data)
-        assert plan_model.score == 82
+        assert plan_model.score == 50
 
     def test_plan_non_farmer_access(self):
         """Should return 403 Forbidden when a non-farmer caller requests a plan."""

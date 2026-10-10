@@ -1,3 +1,4 @@
+import os
 import json
 import pytest
 import boto3
@@ -6,12 +7,13 @@ from tests.conftest import build_event
 
 class TestFarmerBookEndpoint:
 
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def setup_slots(self, moto_dynamodb):
         # We need to manually add some slots to MachineSlots table for testing
         from api.common.config import config
         dynamodb = boto3.client("dynamodb", region_name="ap-south-1")
         dynamodb.put_item(
-            TableName=config.MACHINE_SLOTS_TABLE,
+            TableName=os.environ.get("MACHINE_SLOTS_TABLE", config.MACHINE_SLOTS_TABLE),
             Item={
                 "village_id": {"S": "village-123"},
                 "date": {"S": "2024-11-10"},
@@ -19,7 +21,7 @@ class TestFarmerBookEndpoint:
             }
         )
         dynamodb.put_item(
-            TableName=config.MACHINE_SLOTS_TABLE,
+            TableName=os.environ.get("MACHINE_SLOTS_TABLE", config.MACHINE_SLOTS_TABLE),
             Item={
                 "village_id": {"S": "village-456"},
                 "date": {"S": "2024-11-11"},

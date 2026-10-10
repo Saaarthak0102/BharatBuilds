@@ -43,7 +43,7 @@ def test_rainy_week(base_config):
     forecast = base_forecast()
     forecast[0]["precipitation_sum"] = 30.0 # Heavy rain on day 1
     scored = score_days(forecast, 2, {"start": "2026-10-01", "end": "2026-10-10"}, base_machine_slots(), "standing", base_config)
-    assert scored[0]["breakdown"]["rain"] == 0
+    assert scored[0]["breakdown"]["rain_and_soil"] == 0
     assert scored[0]["score"] < scored[1]["score"]
     
 def test_no_machine_free(base_config):
@@ -52,7 +52,7 @@ def test_no_machine_free(base_config):
     slots[0]["slots_free"] = 0 # No machine on day 1
     scored = score_days(forecast, 2, {"start": "2026-10-01", "end": "2026-10-10"}, slots, "standing", base_config)
     
-    assert scored[0]["breakdown"]["machine"] == 0
+    assert scored[0]["breakdown"]["machine_availability"] == 0
     assert not scored[0]["machine_available"]
     
     # Test replan functionality: If best day has no machine, find next best

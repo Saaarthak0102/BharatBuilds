@@ -1,3 +1,4 @@
+import os
 import json
 import uuid
 import hashlib
@@ -15,8 +16,16 @@ from api.common.config import config
 
 logger = get_logger(__name__)
 
-dynamodb = boto3.client('dynamodb', region_name=config.AWS_REGION)
-dynamodb_resource = boto3.resource('dynamodb', region_name=config.AWS_REGION)
+
+_dynamodb_client = None
+_dynamodb_resource = None
+
+def get_dynamodb_client():
+    return boto3.client('dynamodb', region_name=config.AWS_REGION)
+
+def get_dynamodb_resource():
+    return boto3.resource('dynamodb', region_name=config.AWS_REGION)
+
 
 @require_role("farmer")
 def handler(event, context):
@@ -50,7 +59,7 @@ def _handle_post(event, context):
         booking_hash = hashlib.sha256(raw_key.encode()).hexdigest()[:12]
         booking_id = f"book-{booking_hash}"
         
-        bookings_table = dynamodb_resource.Table(config.BOOKINGS_TABLE)
+        bookings_table = get_dynamodb_resource().Table(os.environ.get("BOOKINGS_TABLE", config.BOOKINGS_TABLE))
         try:
             existing = bookings_table.get_item(
                 Key={'user_id': user_id, 'booking_id': booking_id}
@@ -61,11 +70,11 @@ def _handle_post(event, context):
             logger.error("check_booking_failed", error=str(e), correlation_id=correlation_id)
 
         try:
-            dynamodb.transact_write_items(
+            get_dynamodb_client().transact_write_items(
                 TransactItems=[
                     {
                         'Update': {
-                            'TableName': config.MACHINE_SLOTS_TABLE,
+                            'TableName': os.environ.get('MACHINE_SLOTS_TABLE', config.MACHINE_SLOTS_TABLE),
                             'Key': {
                                 'village_id': {'S': village_id},
                                 'date': {'S': date}
@@ -80,7 +89,7 @@ def _handle_post(event, context):
                     },
                     {
                         'Put': {
-                            'TableName': config.BOOKINGS_TABLE,
+                            'TableName': os.environ.get('BOOKINGS_TABLE', config.BOOKINGS_TABLE),
                             'Item': {
                                 'user_id': {'S': user_id},
                                 'booking_id': {'S': booking_id},
@@ -129,7 +138,7 @@ def _handle_get(event, context):
         claims = authorizer.get("claims", {})
         user_id = claims.get("sub", "unknown-user")
 
-        bookings_table = dynamodb_resource.Table(config.BOOKINGS_TABLE)
+        bookings_table = get_dynamodb_resource().Table(os.environ.get("BOOKINGS_TABLE", config.BOOKINGS_TABLE))
         response = bookings_table.query(
             KeyConditionExpression=Key('user_id').eq(user_id),
             ScanIndexForward=False,

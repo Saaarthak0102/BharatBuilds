@@ -139,6 +139,8 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
         return result.model_dump(), "success"
         
     except (Exception, StepLimitExceeded, AgentTimeout) as e:
+        import logging
+        logging.getLogger(__name__).error("Agent run failed: %s", str(e), exc_info=True)
         return _fallback_result(village_id, crop_stage, language, str(e), trace)
     finally:
         planner_runner_var.reset(t_runner)

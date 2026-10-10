@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { IconTile } from '@/components/ui/IconTile';
@@ -133,27 +134,33 @@ export default function FarmerDashboard() {
           <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
           
           <div className="grid grid-cols-2 gap-4">
-            <GlassCard data-accent="emerald" className="col-span-2 group interactive-card hover:border-[var(--emerald)]/50">
-              <h3 className="font-bold text-[var(--emerald)] group-hover:text-[var(--accent-2)] flex items-center justify-between text-lg mb-2">
-                {t('farmer.bookMachine')}
-                <LuArrowRight className="w-5 h-5" />
-              </h3>
-              <p className="text-sm text-[var(--text-mid)]">{t('farmer.bookMachineDesc')}</p>
-            </GlassCard>
+            <Link href="/farmer/book" className="col-span-2 block">
+              <GlassCard data-accent="emerald" className="group interactive-card hover:border-[var(--emerald)]/50 h-full">
+                <h3 className="font-bold text-[var(--emerald)] group-hover:text-[var(--accent-2)] flex items-center justify-between text-lg mb-2">
+                  {t('farmer.bookMachine')}
+                  <LuArrowRight className="w-5 h-5" />
+                </h3>
+                <p className="text-sm text-[var(--text-mid)]">{t('farmer.bookMachineDesc')}</p>
+              </GlassCard>
+            </Link>
             
-            <IconTile 
-              data-accent="emerald"
-              icon={<LuMap className="w-6 h-6" />}
-              label={t('farmer.strawOutlets')}
-              className="hover:border-[var(--emerald)]/50"
-            />
+            <Link href="/farmer/straw-outlets" className="block h-full">
+              <IconTile 
+                data-accent="emerald"
+                icon={<LuMap className="w-6 h-6" />}
+                label={t('farmer.strawOutlets')}
+                className="hover:border-[var(--emerald)]/50"
+              />
+            </Link>
             
-            <IconTile 
-              data-accent="amber"
-              icon={<LuCalendar className="w-6 h-6" />}
-              label={t('farmer.planner')}
-              className="hover:border-[var(--amber)]/50"
-            />
+            <Link href="/farmer/field" className="block h-full">
+              <IconTile 
+                data-accent="amber"
+                icon={<LuCalendar className="w-6 h-6" />}
+                label={t('farmer.planner')}
+                className="hover:border-[var(--amber)]/50"
+              />
+            </Link>
             
             <GlassCard data-accent="cyan" className="col-span-2 group interactive-card hover:border-[var(--cyan)]/50">
               <div className="flex items-center gap-3">
@@ -288,9 +295,9 @@ export default function FarmerDashboard() {
                           <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">Kisan Seva Kendra (4 km) • Tomorrow, 9 AM</p>
                         </div>
                       </div>
-                      <button className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20">
+                      <Link href="/farmer/book" className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center">
                         Book
-                      </button>
+                      </Link>
                     </div>
 
                     {/* NEW stats row chips */}
@@ -313,20 +320,24 @@ export default function FarmerDashboard() {
 
                 {/* 2. Row of two tiles: Straw Outlets & Planner */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0 flex-1 min-h-[5.5rem]">
-                  <IconTile
-                    data-accent="emerald"
-                    icon={<LuMap className="w-5 h-5 text-[var(--emerald)]" />}
-                    label={t('farmer.strawOutlets')}
-                    sublabel="Patiala Hub"
-                    className="hover:border-[var(--emerald)]/50 p-4"
-                  />
-                  <IconTile
-                    data-accent="amber"
-                    icon={<LuCalendar className="w-5 h-5 text-amber-400" />}
-                    label={t('farmer.planner')}
-                    sublabel="Next 7 Days"
-                    className="hover:border-[var(--amber)]/50 p-4"
-                  />
+                  <Link href="/farmer/straw-outlets" className="block h-full">
+                    <IconTile
+                      data-accent="emerald"
+                      icon={<LuMap className="w-5 h-5 text-[var(--emerald)]" />}
+                      label={t('farmer.strawOutlets')}
+                      sublabel="Patiala Hub"
+                      className="hover:border-[var(--emerald)]/50 p-4"
+                    />
+                  </Link>
+                  <Link href="/farmer/field" className="block h-full">
+                    <IconTile
+                      data-accent="amber"
+                      icon={<LuCalendar className="w-5 h-5 text-amber-400" />}
+                      label={t('farmer.planner')}
+                      sublabel="Next 7 Days"
+                      className="hover:border-[var(--amber)]/50 p-4"
+                    />
+                  </Link>
                 </div>
 
                 {/* 3. Subsidy Info Card */}

@@ -194,4 +194,4 @@ def test_validation_error(mock_context):
     # Actually, pydantic doesn't fail on empty strings by default unless min_length is set.
     res = get_wind(location=None) # Missing required string location
     assert "Error" in res
-    assert trace[-1]["ok"] is False
+    assert trace[-1]["status"] == "error"

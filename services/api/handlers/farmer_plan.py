@@ -65,7 +65,7 @@ def handler(event, context):
         # Rate limiting (e.g., max 5 requests per minute)
         from api.common.ratelimit import check_rate_limit
         user_id = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}).get("sub", "anonymous")
-        check_rate_limit(f"plan_{user_id}", limit=5, window_seconds=60)
+        check_rate_limit(user_id, action="plan")
         
         from agents.planner.agent import run_planner
         import time
