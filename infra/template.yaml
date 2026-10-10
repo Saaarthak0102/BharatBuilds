@@ -365,6 +365,12 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/farmer/book
             Method: POST
+        GetFarmerBookings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/farmer/bookings
+            Method: GET
 
   StrawOutletsFunction:
     Type: AWS::Serverless::Function

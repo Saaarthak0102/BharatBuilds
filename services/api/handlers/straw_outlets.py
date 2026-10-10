@@ -6,12 +6,15 @@ Returns straw outlets / ex-situ facilities for a district.
 import functools
 import inspect
 import json
-from pathlib import Path
 import uuid
+
+import boto3
+from boto3.dynamodb.conditions import Key
 
 from api.common import responses as common_responses
 from api.common.responses import success_response
 from api.common.logging import get_logger
+from api.common.config import config
 
 _raw_logger = get_logger(__name__)
 
@@ -114,21 +117,7 @@ def _format_success_response(data: dict, correlation_id: str = None) -> dict:
     return success_response(payload)
 
 
-SEED_FILE_PATHS = [
-    Path(__file__).resolve().parent.parent.parent.parent / "data" / "seed" / "straw_outlets.json",
-    Path(__file__).resolve().parent.parent.parent / "data" / "seed" / "straw_outlets.json",
-    Path("data/seed/straw_outlets.json"),
-    Path("/var/task/data/seed/straw_outlets.json"),
-]
-
-
-def _load_seed_outlets() -> list[dict]:
-    """Load mock outlet data from existing seed JSON."""
-    for p in SEED_FILE_PATHS:
-        if p.is_file():
-            with open(p, "r", encoding="utf-8") as f:
-                return json.load(f)
-    return []
+dynamodb_resource = boto3.resource('dynamodb', region_name=config.AWS_REGION)
 
 
 @require_role("farmer")
@@ -137,12 +126,13 @@ def handler(event, context):
     Lambda handler for GET /v1/farmer/straw-outlets.
 
     Query params:
-        district: district identifier (e.g. patiala)
+        district_id: district identifier (e.g. patiala)
 
     Returns:
     {
         "outlets": [ ... ],
-        "district": "string",
+        "district_id": "string",
+        "copy": "string",
         "is_sample": true
     }
     """
@@ -151,27 +141,38 @@ def handler(event, context):
 
     try:
         params = event.get("queryStringParameters", {}) or {}
-        district = params.get("district")
+        district_id = params.get("district_id") or params.get("district")
 
-        if not district or not district.strip():
-            raise ValidationError("district query parameter is required")
+        if not district_id or not district_id.strip():
+            raise ValidationError("district_id query parameter is required")
 
-        district_normalized = district.strip().lower()
+        district_normalized = district_id.strip().lower()
 
-        seed_outlets = _load_seed_outlets()
-        matching = [
-            o for o in seed_outlets
-            if str(o.get("district_id", "")).strip().lower() == district_normalized
-        ]
+        outlets_table = dynamodb_resource.Table(config.STRAW_OUTLETS_TABLE)
+        response = outlets_table.query(
+            KeyConditionExpression=Key('district_id').eq(district_normalized)
+        )
+        
+        items = response.get('Items', [])
 
-        if not matching:
+        if not items:
             raise ValidationError(
-                f"Unsupported district '{district}'. No straw outlets available."
+                f"Unsupported district '{district_id}'. No straw outlets available."
             )
 
+        outlets = []
+        for item in items:
+            outlets.append({
+                "facility_type": item.get("facility_type", "Depot"),
+                "name": item.get("name", "Unknown"),
+                "contact_hint": item.get("contact_hint", "Contact local aggregator"),
+                "is_sample": item.get("is_sample", True)
+            })
+
         mock_result = {
-            "outlets": matching,
-            "district": district_normalized,
+            "outlets": outlets,
+            "district_id": district_normalized,
+            "copy": "Contact your nearest depot or aggregator",
             "is_sample": True,
         }
 
