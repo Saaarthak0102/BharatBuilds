@@ -5,7 +5,7 @@ import { mockReports } from '../mock/reports';
 import { mockStrawOutlets } from '../mock/strawOutlets';
 import { mockMapLayers } from '../mock/mapLayers';
 import { authClient } from '../auth/authClient';
-import type { PlanResult, TodayResponse, MapLayers, Report, ApiResponse, MachineOption } from '../types';
+import type { PlanResult, TodayResponse, MapLayers, Report, ApiResponse, MachineOption, FarmerProfile } from '../types';
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -65,7 +65,7 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
     },
-    book: async (data: { slot_id: string; village_id: string; date: string }): Promise<ApiResponse<{ booking_id: string; status: string; slot: MachineOption; is_sample: boolean }>> => {
+    book: async (data: { slot_id: string; village_id: string; date: string; idempotency_key?: string }): Promise<ApiResponse<{ booking_id: string; status: string; slot: MachineOption; is_sample: boolean }>> => {
       if (API_MODE === 'mock') {
          return new Promise((resolve) => 
           setTimeout(() => resolve({
@@ -94,6 +94,31 @@ export const apiClient = {
         return new Promise((resolve) => resolve({ data: { outlets: mockStrawOutlets, is_sample: true } }));
       }
       return fetchWithAuth(`${API_ENDPOINTS.FARMER.STRAW_OUTLETS}?district=${districtId}`);
+    },
+    getProfile: async (): Promise<ApiResponse<FarmerProfile>> => {
+      if (API_MODE === 'mock') {
+        return new Promise((resolve) => 
+          setTimeout(() => resolve({
+            data: {
+              user_id: 'mock-user-123',
+              role: 'farmer',
+              name: 'Gurpreet Singh',
+              phone: '+919876543210',
+              village_id: 'village-patiala-001',
+              village_name: 'Rajpura',
+              district: 'Patiala',
+              land_size_acres: 10,
+              main_crop: 'wheat',
+              crop_stage: 'harvested',
+              has_own_machine: false,
+              language: 'en',
+              created_at: new Date().toISOString(),
+              is_sample: true,
+            } as FarmerProfile
+          }), 1000)
+        );
+      }
+      return fetchWithAuth(API_ENDPOINTS.AUTH.GET_PROFILE);
     }
   },
   citizen: {
