@@ -37,6 +37,7 @@ Globals:
         SUBSCRIPTIONS_TABLE: !Ref SubscriptionsTable
         DATA_CACHE_TABLE: !Ref DataCacheTable
         AGENT_RUNS_TABLE: !Ref AgentRunsTable
+        REPORTS_BUCKET: !Ref ReportsBucket
         FIRMS_API_KEY_PARAM: !Sub /saans/${Stage}/firms-api-key
         OPENAQ_API_KEY_PARAM: !Sub /saans/${Stage}/openaq-api-key
         MODEL_PROVIDER: "bedrock"
@@ -65,6 +66,50 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub saans-alerts-${Stage}
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub saans-reports-${Stage}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteAfter30Days
+            Status: Enabled
+            ExpirationInDays: 30
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - !Ref AllowedOrigin
+            AllowedMethods:
+              - PUT
+            AllowedHeaders:
+              - "*"
+            MaxAge: 3600
+
+  ReportsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReportsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource: !Sub ${ReportsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
 
   # ─── DynamoDB Tables ─────────────────────────────────────
   UsersTable:
@@ -283,7 +328,7 @@ Resources:
     Properties:
       StageName: !Ref Stage
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,OPTIONS,DELETE'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
       Auth:
@@ -298,13 +343,13 @@ Resources:
             Headers:
               Access-Control-Allow-Origin: "'*'"
               Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS,DELETE'"
         DEFAULT_5XX:
           ResponseParameters:
             Headers:
               Access-Control-Allow-Origin: "'*'"
               Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              Access-Control-Allow-Methods: "'GET,POST,OPTIONS,DELETE'"
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -456,12 +501,35 @@ Resources:
       FunctionName: !Sub saans-reports-upload-url-${Stage}
       CodeUri: ../services/
       Handler: api.handlers.reports_upload_url.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
       Events:
         PostUploadUrl:
           Type: Api
           Properties:
             RestApiId: !Ref SaansApi
             Path: /v1/reports/upload-url
+            Method: POST
+
+  ReportsClassifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-reports-classify-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.reports_classify.handler
+      Timeout: 30
+      MemorySize: 512
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+        - !Ref AgentBedrockPolicy
+      Events:
+        PostClassify:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports/classify
             Method: POST
 
   ReportsFunction:
@@ -486,6 +554,12 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/reports
             Method: POST
+        DeleteReports:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports/{id}
+            Method: DELETE
 
   SubscriptionsFunction:
     Type: AWS::Serverless::Function
@@ -581,7 +655,7 @@ Resources:
             Schedule: rate(3 hours)
             Description: Ingest weather and environmental data every 3 hours
             Enabled: true
-
+            
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
@@ -619,6 +693,10 @@ Outputs:
   AgentRunsTable:
     Description: DynamoDB AgentRuns table name
     Value: !Ref AgentRunsTable
+  ReportsBucket:
+    Description: S3 Reports Bucket
+    Value: !Ref ReportsBucket
   IngestFunction:
     Description: Lambda function ARN for data ingestion
     Value: !GetAtt IngestFunction.Arn
+
