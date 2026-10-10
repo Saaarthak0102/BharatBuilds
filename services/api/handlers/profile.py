@@ -13,37 +13,20 @@ from datetime import datetime, timezone
 import boto3
 import pydantic
 
-try:
-    from common.responses import success_response, error_response
-    from common.errors import ValidationError, NotFoundError
-    from common.auth import require_auth, get_user_claims
-    from common.logging import get_logger
-    from common.config import config
-except ImportError:
-    from services.api.common.responses import success_response, error_response
-    from services.api.common.errors import ValidationError, NotFoundError
-    from services.api.common.auth import require_auth, get_user_claims
-    from services.api.common.logging import get_logger
-    from services.api.common.config import config
+from api.common.responses import success_response, error_response
+from api.common.errors import ValidationError, NotFoundError
+from api.common.auth import require_auth, get_user_claims
+from api.common.logging import get_logger
+from api.common.config import config
 
-try:
-    from models import (
-        CropStage,
-        Role,
-        FarmerProfile,
-        CitizenProfile,
-        FarmerProfileInput,
-        CitizenProfileInput,
-    )
-except ImportError:
-    from services.api.models import (
-        CropStage,
-        Role,
-        FarmerProfile,
-        CitizenProfile,
-        FarmerProfileInput,
-        CitizenProfileInput,
-    )
+from api.models import (
+    CropStage,
+    Role,
+    FarmerProfile,
+    CitizenProfile,
+    FarmerProfileInput,
+    CitizenProfileInput,
+)
 
 logger = get_logger(__name__)
 

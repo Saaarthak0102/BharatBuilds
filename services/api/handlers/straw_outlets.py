@@ -9,9 +9,9 @@ import json
 from pathlib import Path
 import uuid
 
-from common import responses as common_responses
-from common.responses import success_response
-from common.logging import get_logger
+from api.common import responses as common_responses
+from api.common.responses import success_response
+from api.common.logging import get_logger
 
 _raw_logger = get_logger(__name__)
 
@@ -46,10 +46,10 @@ logger = _CorrelationLogger(_raw_logger)
 
 # Error and exception handling compatible with both ApiError and legacy conventions
 try:
-    from common.errors import ValidationError
+    from api.common.errors import ValidationError
 except ImportError:
     try:
-        from common.errors import ApiError
+        from api.common.errors import ApiError
         class ValidationError(ApiError):
             def __init__(self, message: str):
                 super().__init__(message=message, status_code=400, code="BadRequest")
@@ -59,7 +59,7 @@ except ImportError:
 
 # Auth decorator compatible with both function require_role(event, role) and decorator @require_role(role)
 try:
-    from common.auth import require_role as _base_require_role
+    from api.common.auth import require_role as _base_require_role
     if len(inspect.signature(_base_require_role).parameters) == 2:
         def require_role(role: str):
             def decorator(handler_fn):
@@ -87,7 +87,7 @@ def error_response(error_or_status, message: str = None, correlation_id: str = N
         resp = common_responses.error_response(error_or_status)
     else:
         try:
-            from common.errors import ApiError
+            from api.common.errors import ApiError
             err = ApiError(message=message or str(error_or_status), status_code=error_or_status, code="BadRequest" if error_or_status == 400 else "InternalServerError")
             resp = common_responses.error_response(err)
         except Exception:

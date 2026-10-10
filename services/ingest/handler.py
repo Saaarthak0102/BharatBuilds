@@ -14,7 +14,7 @@ import logging
 from typing import Any
 
 try:
-    from services.ingest import cache, open_meteo, firms, aqi
+    from ingest import cache, open_meteo, firms, aqi
 except (ImportError, ModuleNotFoundError):
     try:
         from ingest import cache, open_meteo, firms, aqi  # type: ignore

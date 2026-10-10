@@ -193,7 +193,7 @@ fetch_aqi = fetch_data
 
 def ingest(cache_func=None) -> dict[str, Any]:
     try:
-        from services.ingest.cache import cache_to_dynamo
+        from ingest.cache import cache_to_dynamo
     except (ImportError, ModuleNotFoundError):
         try:
             from ingest.cache import cache_to_dynamo

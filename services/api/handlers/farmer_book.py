@@ -6,10 +6,10 @@ Books a machine slot for field clearing (simulated).
 import json
 import uuid
 
-from common.responses import success_response, error_response
-from common.errors import ValidationError
-from common.auth import require_role
-from common.logging import get_logger
+from api.common.responses import success_response, error_response
+from api.common.errors import ValidationError
+from api.common.auth import require_role
+from api.common.logging import get_logger
 
 logger = get_logger(__name__)
 

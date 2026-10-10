@@ -339,7 +339,7 @@ def ingest(cache_func=None) -> dict[str, Any]:
     Execute weather ingestion and store to cache.
     """
     try:
-        from services.ingest.cache import cache_to_dynamo
+        from ingest.cache import cache_to_dynamo
     except (ImportError, ModuleNotFoundError):
         try:
             from ingest.cache import cache_to_dynamo  # type: ignore

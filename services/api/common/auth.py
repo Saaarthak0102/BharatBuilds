@@ -37,7 +37,7 @@ def require_auth(handler_fn):
     def wrapper(event, context):
         claims = get_claims(event)
         if not claims or not claims.get("sub"):
-            from common.responses import error_response
+            from api.common.responses import error_response
             return error_response(401, "Authentication required")
         return handler_fn(event, context)
     return wrapper
@@ -70,7 +70,7 @@ def require_role(role_or_event, maybe_role=None):
                 claims = get_claims(event)
                 role = claims.get("custom:role")
                 if role != required_role:
-                    from common.responses import error_response
+                    from api.common.responses import error_response
                     return error_response(
                         403,
                         f"Access denied. Requires role: {required_role}",

@@ -1,6 +1,6 @@
 """Re-export PlanResult models from models package."""
 
-from models import (
+from api.models import (
     PlanResult,
     ScoreBreakdown,
     ToolTraceEntry,
