@@ -6,6 +6,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PillButton } from '@/components/ui/PillButton';
 import { Chip } from '@/components/ui/Chip';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+import { apiClient } from '@/lib/api/client';
+import { isDemoMode } from '@/lib/demo';
 import { LuBell, LuCheck, LuShieldAlert, LuSend, LuInfo } from 'react-icons/lu';
 
 const PRESET_THRESHOLDS = [100, 150, 200, 300];
@@ -31,10 +33,22 @@ export default function CitizenAlertsPage() {
     }
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('saans_alert_enabled', String(enabled));
       localStorage.setItem('saans_alert_threshold', String(threshold));
+      try {
+        const demoEmail = process.env.NEXT_PUBLIC_DEMO_CITIZEN_EMAIL || 'citizen.demo@saans.internal';
+        await apiClient.subscriptions.create({
+          area_id: 'ward-east-delhi-001',
+          threshold,
+          email: demoEmail,
+        });
+      } catch (err) {
+        if (!isDemoMode()) {
+          console.error('Failed to create subscription on server:', err);
+        }
+      }
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 3000);
     }

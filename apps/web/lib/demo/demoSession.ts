@@ -43,6 +43,7 @@ export async function startDemoSession(role: 'farmer' | 'citizen'): Promise<Sess
         password: password.trim(),
       });
       if (session && session.is_authenticated) {
+        localStorage.setItem(DEMO_MOCK_SESSION_KEY, JSON.stringify(session));
         return session;
       }
     } catch (err) {

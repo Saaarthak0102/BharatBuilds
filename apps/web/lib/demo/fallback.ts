@@ -64,6 +64,12 @@ export async function withDemoFallback<T>(options: DemoFallbackOptions<T>): Prom
         (realResult as any)._source = 'live';
         if (payload && typeof payload === 'object') {
           payload._source = 'live';
+          if (Array.isArray(payload.tool_trace)) {
+            payload.tool_trace = payload.tool_trace.map((t: any) => ({
+              ...t,
+              source: t.source || 'live',
+            }));
+          }
         }
       }
       return realResult;

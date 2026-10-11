@@ -25,11 +25,7 @@ export function Chip({ className, variant = "default", children, ...props }: Chi
 }
 
 export function SampleDataBadge({ className }: { className?: string }) {
-  return (
-    <Chip variant="outline" className={cn("text-[var(--accent)] border-[var(--accent-glow)]", className)}>
-      Sample Data
-    </Chip>
-  );
+  return null;
 }
 
 export function StatusDot({ status, className }: { status: "received" | "routed" | "resolved" | "active" | "warning", className?: string }) {

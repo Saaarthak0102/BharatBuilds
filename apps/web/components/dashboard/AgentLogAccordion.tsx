@@ -11,6 +11,7 @@ export interface ToolTraceItem {
   latency_ms: number;
   timeAgo?: string;
   isSample?: boolean;
+  source?: 'live' | 'demo' | string;
 }
 
 interface AgentLogAccordionProps {
@@ -114,7 +115,19 @@ export function AgentLogAccordion({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className={cn('w-2 h-2 rounded-full shrink-0 animate-pulse', dotColorClass)} />
                   <span className="text-[var(--text-hi)] truncate font-semibold">{trace.tool}</span>
-                  {trace.isSample && (
+                  {trace.source && (
+                    <span
+                      className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold',
+                        trace.source === 'live'
+                          ? 'text-[var(--emerald)] bg-[var(--emerald)]/10 border border-[var(--emerald)]/20'
+                          : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                      )}
+                    >
+                      {trace.source}
+                    </span>
+                  )}
+                  {trace.isSample && !trace.source && (
                     <span className="text-[10px] text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10 uppercase tracking-wider font-bold">
                       SAMPLE
                     </span>

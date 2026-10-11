@@ -3,464 +3,394 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Chip, SampleDataBadge } from '@/components/ui/Chip';
+import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
-import { useT } from '@/lib/i18n/useT';
 import { apiClient } from '@/lib/api/client';
-import { villages } from '@/lib/data/reference';
-import { PlanResult, FarmerProfile } from '@/lib/types';
-import { formatIST, isWithinWeekIST } from '@/lib/utils/date';
-import { LuArrowLeft, LuTractor, LuMap, LuInfo, LuSparkles } from 'react-icons/lu';
+import { FarmerBooking, FarmerBookingsResponse } from '@/lib/types';
+import { formatIST, todayIST } from '@/lib/utils/date';
+import {
+  LuArrowLeft,
+  LuCalendar,
+  LuTractor,
+  LuCheck,
+  LuClock,
+  LuX,
+  LuChevronLeft,
+  LuChevronRight,
+  LuSparkles,
+  LuLeaf,
+  LuShieldCheck,
+} from 'react-icons/lu';
 
-export default function FarmerFieldPlanner() {
+export default function FarmerFieldPlannerPage() {
   const router = useRouter();
-  const { t } = useT();
-  
-  const [profile, setProfile] = useState<FarmerProfile | null>(null);
-  const [selectedVillageId, setSelectedVillageId] = useState<string>('');
-  const [cropStage, setCropStage] = useState<'harvested' | 'partially_cleared' | 'standing'>('harvested');
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [bookings, setBookings] = useState<FarmerBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<FarmerBooking | null>(null);
 
-  const [isPlanning, setIsPlanning] = useState(false);
-  const [planResult, setPlanResult] = useState<PlanResult | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
-  const [isCached, setIsCached] = useState(false);
-
-  const agentSteps = [
-    "Checking weather forecast...",
-    "Analyzing wind patterns...",
-    "Checking local fire activity...",
-    "Finding available machines...",
-    "Finalizing best day..."
-  ];
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [visibleTraceCount, setVisibleTraceCount] = useState<number>(0);
+  // Calendar month navigation state (defaults to current date)
+  const [viewDate, setViewDate] = useState(() => new Date());
 
   useEffect(() => {
-    apiClient.farmer.getProfile().then(res => {
-      setProfile(res.data);
-      setSelectedVillageId(res.data.village_id);
-      setCropStage(res.data.crop_stage);
-    }).catch(err => {
-      console.error("Failed to load profile", err);
-    }).finally(() => {
-      setLoadingProfile(false);
-    });
+    apiClient.farmer
+      .getBookings()
+      .then((res) => {
+        setBookings(res.data.bookings || []);
+      })
+      .catch((err) => {
+        console.error('Failed to load bookings', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  useEffect(() => {
-    if (isPlanning) {
-      const interval = setInterval(() => {
-        setCurrentStepIndex(prev => Math.min(prev + 1, agentSteps.length - 1));
-      }, 800);
-      return () => clearInterval(interval);
-    } else {
-      setCurrentStepIndex(0);
-    }
-  }, [isPlanning]);
+  // Calendar helpers
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth(); // 0-indexed
 
-  // Reveal demo trace steps one-by-one over ~3 seconds; show real trace immediately
-  useEffect(() => {
-    if (!planResult?.tool_trace || planResult.tool_trace.length === 0) {
-      setVisibleTraceCount(0);
-      return;
-    }
+  const monthName = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-    if (!planResult.is_sample) {
-      setVisibleTraceCount(planResult.tool_trace.length);
-      return;
-    }
+  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    setVisibleTraceCount(1);
-    const total = planResult.tool_trace.length;
-    const stepDelay = Math.max(300, Math.floor(3000 / Math.max(1, total)));
-    const interval = setInterval(() => {
-      setVisibleTraceCount((prev) => {
-        if (prev >= total) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, stepDelay);
-
-    return () => clearInterval(interval);
-  }, [planResult]);
-
-  const runPlan = async () => {
-    if (isPlanning) return;
-    setIsPlanning(true);
-    setPlanError(null);
-    setIsCached(false);
-    setPlanResult(null);
-    
-    try {
-      const res = await apiClient.farmer.plan({
-        village_id: selectedVillageId,
-        crop_stage: cropStage,
-        language: profile?.language || 'en'
-      });
-      const data = res.data;
-      const isBestDayValid = isWithinWeekIST(data?.best_day);
-      const isMachineValid = !data?.machine_option?.date || isWithinWeekIST(data?.machine_option?.date);
-      if (!isBestDayValid || !isMachineValid) {
-        setPlanResult(null);
-        setPlanError("No valid plan for this week yet");
-        localStorage.removeItem('lastPlanResult');
-      } else {
-        setPlanResult(data);
-        localStorage.setItem('lastPlanResult', JSON.stringify(data));
-      }
-    } catch (err: any) {
-      console.error(err);
-      const cached = localStorage.getItem('lastPlanResult');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const isBestDayValid = isWithinWeekIST(parsed?.best_day);
-          const isMachineValid = !parsed?.machine_option?.date || isWithinWeekIST(parsed?.machine_option?.date);
-          if (isBestDayValid && isMachineValid) {
-            setPlanResult(parsed);
-            setIsCached(true);
-          } else {
-            localStorage.removeItem('lastPlanResult');
-            setPlanError("No valid plan for this week yet");
-          }
-        } catch (e) {
-          setPlanError("Network error. Please try again.");
-        }
-      } else {
-        setPlanError("Network error. Please try again.");
-      }
-    } finally {
-      setIsPlanning(false);
-    }
+  const prevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1));
   };
 
+  const nextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1));
+  };
+
+  // Map bookings by date string YYYY-MM-DD
+  const bookingsByDate = new Map<string, FarmerBooking[]>();
+  bookings.forEach((b) => {
+    const dStr = b.date ? b.date.slice(0, 10) : '';
+    if (dStr) {
+      const list = bookingsByDate.get(dStr) || [];
+      list.push(b);
+      bookingsByDate.set(dStr, list);
+    }
+  });
+
+  const todayStr = todayIST();
+
   return (
-    <div className="w-full pb-12">
-      {/* Secondary Top Bar for Back Affordance */}
-      <div className="sticky top-0 lg:top-16 z-[40] border-b border-[var(--border)] bg-[var(--bg-1)]/80 backdrop-blur-md px-4 py-3 flex items-center">
-        <button onClick={() => router.back()} className="flex items-center gap-2 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors">
+    <div className="w-full pb-16 min-h-screen">
+      {/* Top Bar for Back Navigation */}
+      <div className="sticky top-0 lg:top-16 z-[40] border-b border-[var(--border)] bg-[var(--bg-1)]/80 backdrop-blur-md px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => router.push('/farmer')}
+          className="flex items-center gap-2 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer"
+        >
           <LuArrowLeft className="w-5 h-5" />
-          <span className="font-semibold text-sm">Back</span>
+          <span className="font-semibold text-sm">Back to Dashboard</span>
         </button>
+
+        <PillButton
+          variant="accent"
+          onClick={() => router.push('/farmer/book')}
+          className="text-xs px-4"
+        >
+          <LuTractor className="w-3.5 h-3.5 mr-1" />
+          Book Machine
+        </PillButton>
       </div>
 
       <div className="w-full max-w-4xl mx-auto px-4 lg:px-6 mt-6 space-y-6">
-         <div className="flex items-center justify-between">
-           <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('farmer.planner') || "Planner"}</h1>
-         </div>
+        <div>
+          <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">
+            Field Schedule & Planner Calendar
+          </h1>
+          <p className="text-xs text-[var(--text-mid)] mt-1">
+            Tap any marked date on the calendar card to view full machine booking details and schedule.
+          </p>
+        </div>
 
-         {/* Form Section */}
-         <GlassCard className="space-y-4">
-           {loadingProfile ? (
-             <p className="text-[var(--text-mid)] animate-pulse">Loading profile...</p>
-           ) : (
-             <>
-                <div>
-                  <label className="block text-sm font-bold text-[var(--text-mid)] uppercase tracking-wider mb-2">Village</label>
-                  <select 
-                    className="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-[var(--text-hi)] outline-none focus:border-[var(--emerald)] transition-colors"
-                    value={selectedVillageId}
-                    onChange={(e) => setSelectedVillageId(e.target.value)}
-                  >
-                    {villages.map(v => (
-                      <option key={v.village_id} value={v.village_id}>{v.name} ({v.district})</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold text-[var(--text-mid)] uppercase tracking-wider mb-2">Crop Stage</label>
-                  <select 
-                    className="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-[var(--text-hi)] outline-none focus:border-[var(--emerald)] transition-colors"
-                    value={cropStage}
-                    onChange={(e) => setCropStage(e.target.value as any)}
-                  >
-                    <option value="standing">Standing</option>
-                    <option value="harvested">Harvested</option>
-                    <option value="partially_cleared">Partially Cleared</option>
-                  </select>
-                </div>
-
-                <div className="pt-2">
-                  <PillButton 
-                    onClick={runPlan} 
-                    disabled={isPlanning}
-                    variant="accent"
-                    className="w-full sm:w-auto"
-                  >
-                    {isPlanning ? "Planning..." : "Run Plan"}
-                  </PillButton>
-                </div>
-             </>
-           )}
-         </GlassCard>
-
-         {/* Loading State Skeleton */}
-         {isPlanning && (
-           <GlassCard className="border border-[var(--emerald)]/20 relative overflow-hidden">
-              <div className="animate-pulse space-y-4">
-                 <div className="h-6 w-32 bg-[var(--bg-2)] rounded"></div>
-                 <div className="h-12 w-64 bg-[var(--bg-2)] rounded"></div>
-                 <div className="h-16 w-full bg-[var(--bg-2)] rounded"></div>
+        {/* ─── CALENDAR CARD ──────────────────────────────────────────────── */}
+        <GlassCard data-accent="emerald" className="p-6 rounded-2xl border border-[var(--border)] space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[var(--emerald)]/15 border border-[var(--emerald)]/30 flex items-center justify-center text-[var(--emerald)]">
+                <LuCalendar className="w-5 h-5" />
               </div>
-              <div className="mt-6 p-4 bg-[var(--bg-1)] rounded-xl border border-[var(--border)]">
-                <div className="flex items-center gap-3">
-                   <div className="w-5 h-5 rounded-full border-2 border-[var(--emerald)] border-t-transparent animate-spin"></div>
-                   <span className="text-[var(--emerald)] font-medium">{agentSteps[currentStepIndex]}</span>
-                </div>
+              <div>
+                <h2 className="text-base font-bold text-[var(--text-hi)]">{monthName}</h2>
+                <p className="text-[11px] text-[var(--text-mid)]">
+                  {bookings.length} recorded booking{bookings.length !== 1 ? 's' : ''}
+                </p>
               </div>
-           </GlassCard>
-         )}
+            </div>
 
-         {/* Error / Offline Fallback Label */}
-         {planError && !isCached && (
-            <GlassCard data-accent="red" className="border-amber-500/30 text-amber-300 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-               <div className="flex items-center gap-2">
-                 <LuInfo className="w-5 h-5 shrink-0 text-amber-400" />
-                 <span>{planError}</span>
-               </div>
-               <PillButton variant="accent" onClick={runPlan} disabled={isPlanning} className="text-xs">
-                 Retry
-               </PillButton>
-            </GlassCard>
-         )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={prevMonth}
+                aria-label="Previous month"
+                className="w-8 h-8 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] text-[var(--text-mid)] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <LuChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewDate(new Date())}
+                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] text-[var(--text-mid)] hover:text-white transition-colors cursor-pointer"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                aria-label="Next month"
+                className="w-8 h-8 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] text-[var(--text-mid)] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <LuChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-         {/* Result */}
-         {planResult && !isPlanning && (
-           <>
-             <GlassCard data-accent="emerald" className="border border-[var(--emerald)]/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--emerald)]/10 blur-[80px] rounded-full pointer-events-none" />
-                
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <Chip variant="accent" className="bg-[var(--emerald)]/10 text-[var(--emerald)] border-[var(--emerald)]/20">
-                        {t('farmer.bestDay') || "BEST CLEARING DAY"}
-                      </Chip>
-                      {isCached && (
-                        <Chip variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
-                          LAST RESULT (OFFLINE)
-                        </Chip>
-                      )}
-                    </div>
-                    {planResult.is_sample && <SampleDataBadge />}
-                  </div>
-                  
-                  {planResult.sowing_window_status && planResult.sowing_window_status !== 'inside' && (
-                    <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-start gap-2">
-                      <LuInfo className="w-5 h-5 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Notice: Outside Recommended Sowing Window ({planResult.sowing_window_status}).</strong> Recommended window for this crop stage: {planResult.window_start} to {planResult.window_end}.
-                      </div>
-                    </div>
-                  )}
+          {/* Day of Week Headers */}
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <span key={d} className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-low)] py-1">
+                {d}
+              </span>
+            ))}
+          </div>
 
-                  {planResult.no_ideal_day && (
-                    <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start gap-2">
-                      <LuInfo className="w-5 h-5 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>No Ideal Clearing Day Found: </strong>
-                        Forecast conditions for the 7-day window ({planResult.window_start} to {planResult.window_end}) do not meet optimal criteria (score: {planResult.score}/100). The day shown is the best available option.
-                      </div>
-                    </div>
-                  )}
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            {/* Empty slots before first day */}
+            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+              <div key={`empty-${i}`} className="h-14 sm:h-18 rounded-xl bg-transparent" />
+            ))}
 
-                  <div className="flex items-end gap-4 mb-6 flex-wrap">
-                    <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)]">
-                      {formatIST(planResult.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div className="text-lg font-mono text-[var(--emerald)] mb-1">
-                      Score {planResult.score}/100
-                    </div>
-                  </div>
-                  
-                  {/* Score breakdown bars */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                     {Object.entries(planResult.score_breakdown).map(([k, v]) => (
-                       <div key={k} className="flex flex-col gap-1">
-                         <div className="text-[10px] uppercase text-[var(--text-mid)] font-bold tracking-wider">{k.replace(/_/g, ' ')}</div>
-                         <div className="w-full bg-[var(--bg-2)] h-2 rounded-full overflow-hidden">
-                           <div className="h-full bg-[var(--emerald)] rounded-full" style={{ width: `${v}%` }}></div>
-                         </div>
-                       </div>
-                     ))}
-                  </div>
-                  
-                  <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-6">
-                    {planResult.sowing_window_status && planResult.sowing_window_status !== 'inside'
-                      ? `[Notice: Outside recommended sowing window (${planResult.sowing_window_status})${planResult.window_start ? `: ${planResult.window_start} to ${planResult.window_end}` : ''}] ${planResult.reason_text}`
-                      : planResult.no_ideal_day
-                      ? `[Notice: No ideal clearing day found in 7-day forecast (Score: ${planResult.score}/100)] ${planResult.reason_text}`
-                      : planResult.reason_text}
-                  </p>
+            {/* Days of month */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+              const dayBookings = bookingsByDate.get(dateStr) || [];
+              const isToday = dateStr === todayStr;
+              const hasBookings = dayBookings.length > 0;
 
-                  <div className="text-xs text-[var(--text-low)] mb-8 italic">
-                    Note: This is guidance, not a guarantee. Updated just now.
-                  </div>
-                  
-                  {/* Machine & Straw Outlets Layout */}
-                  {(() => {
-                    const topStrawOutlets = (planResult.straw_outlets || []).slice(0, 3);
-                    const topOutletIds = topStrawOutlets.map((o) => o.outlet_id).filter(Boolean);
+              const status = hasBookings ? dayBookings[0].status : null;
+              const isCompleted = status === 'COMPLETED';
+              const isPending = status === 'PENDING';
+              const isConfirmed = status === 'CONFIRMED';
 
-                    const strawOutletsSection = topStrawOutlets.length > 0 ? (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--bg-1)]/90 border border-[var(--border)] space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border)]">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-[var(--text-hi)] text-base">
-                                Prefer to sell your straw?
-                              </h3>
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                Top 3 Ranked
-                              </span>
-                            </div>
-                            <p className="text-xs text-[var(--text-mid)] mt-0.5">
-                              Ranked deterministically by distance from your village, accepted residue, and pickup support.
-                            </p>
-                          </div>
-                          <PillButton
-                            variant="primary-silver"
-                            onClick={() =>
-                              router.push(
-                                `/farmer/straw-outlets?recommended=${topOutletIds.join(',')}`
-                              )
-                            }
-                            className="text-xs py-1.5 px-3.5 self-start sm:self-auto"
-                          >
-                            Browse All Outlets
-                          </PillButton>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {topStrawOutlets.map((outlet, idx) => (
-                            <div
-                              key={outlet.outlet_id || idx}
-                              className="p-3.5 rounded-xl bg-[var(--bg-0)] border border-[var(--border)] hover:border-amber-400/50 transition-all flex flex-col justify-between"
-                            >
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                    Rank #{idx + 1}
-                                  </span>
-                                  <span className="text-xs font-semibold text-[var(--emerald)]">
-                                    ~{outlet.distance_km} km
-                                  </span>
-                                </div>
-                                <h4 className="text-sm font-bold text-[var(--text-hi)] mb-1 leading-tight">
-                                  {outlet.name}
-                                </h4>
-                                <div className="text-[11px] text-[var(--text-low)] capitalize mb-2">
-                                  {(outlet.facility_type || '').replace(/_/g, ' ')} • {outlet.district}
-                                </div>
-                                <p className="text-xs text-[var(--text-mid)] bg-[var(--bg-1)] p-2 rounded-lg border border-[var(--border)] leading-relaxed">
-                                  {outlet.reason || 'Residue match & proximate facility'}
-                                </p>
-                              </div>
-
-                              <div className="mt-3 pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px]">
-                                <span className="text-[var(--text-low)]">
-                                  Pickup: {outlet.pickup_support === 'yes' ? 'Available' : 'Drop-off only'}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    router.push(
-                                      `/farmer/straw-outlets?recommended=${topOutletIds.join(',')}`
-                                    )
-                                  }
-                                  className="text-[var(--accent)] hover:underline font-semibold cursor-pointer"
-                                >
-                                  View details &rarr;
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null;
-
-                    const machineSection = planResult.machine_option ? (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-[var(--emerald)]/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0 group-hover:scale-110 transition-transform">
-                            <LuTractor />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-[var(--text-hi)]">
-                              {planResult.machine_option.machine_type} Available
-                            </h3>
-                            <p className="text-sm text-[var(--text-mid)]">
-                              {planResult.machine_option.owner_label}
-                            </p>
-                          </div>
-                        </div>
-                        <PillButton
-                          variant="accent"
-                          onClick={() =>
-                            router.push(
-                              `/farmer/book?slot_id=${planResult.machine_option!.slot_id}&date=${planResult.best_day}`
-                            )
-                          }
-                        >
-                          Book Slot
-                        </PillButton>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-amber-500/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 text-xl shrink-0 group-hover:scale-110 transition-transform">
-                            <LuMap />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-[var(--text-hi)]">No machines found</h3>
-                            <p className="text-sm text-[var(--text-mid)]">
-                              Consider delivering to a straw outlet nearby.
-                            </p>
-                          </div>
-                        </div>
-                        <PillButton
-                          variant="primary-silver"
-                          onClick={() => router.push('/farmer/straw-outlets')}
-                        >
-                          View Outlets
-                        </PillButton>
-                      </div>
-                    );
-
-                    // When no machine is free, straw outlets section is visually first
-                    if (!planResult.machine_option) {
-                      return (
-                        <div className="space-y-4">
-                          {strawOutletsSection}
-                          {machineSection}
-                        </div>
-                      );
+              return (
+                <button
+                  key={dateStr}
+                  type="button"
+                  onClick={() => {
+                    if (hasBookings) {
+                      setSelectedBooking(dayBookings[0]);
                     }
+                  }}
+                  disabled={!hasBookings}
+                  className={`h-14 sm:h-18 p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between text-left transition-all relative ${
+                    hasBookings
+                      ? 'cursor-pointer hover:scale-105 shadow-md ' +
+                        (isCompleted
+                          ? 'bg-emerald-950/40 border-[var(--emerald)]/50 text-[var(--emerald)]'
+                          : isPending
+                          ? 'bg-amber-950/40 border-amber-500/50 text-amber-300'
+                          : 'bg-cyan-950/40 border-cyan-500/50 text-cyan-300')
+                      : 'bg-[var(--bg-1)]/40 border-[var(--border)]/60 text-[var(--text-mid)]'
+                  } ${isToday ? 'ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-0)]' : ''}`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span
+                      className={`text-xs sm:text-sm font-bold ${
+                        hasBookings ? 'text-white' : 'text-[var(--text-low)]'
+                      }`}
+                    >
+                      {dayNum}
+                    </span>
+                    {isToday && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" title="Today" />
+                    )}
+                  </div>
 
-                    // Otherwise machine option is first, with straw outlets below
-                    return (
-                      <div className="space-y-4">
-                        {machineSection}
-                        {strawOutletsSection}
+                  {hasBookings && (
+                    <div className="w-full">
+                      <div className="text-[9px] sm:text-[10px] truncate font-semibold leading-tight flex items-center gap-1">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            isCompleted ? 'bg-[var(--emerald)]' : isPending ? 'bg-amber-400' : 'bg-cyan-400'
+                          }`}
+                        />
+                        <span className="truncate">{dayBookings[0].machine_type.split(' ')[0]}</span>
                       </div>
-                    );
-                  })()}
-                </div>
-             </GlassCard>
+                      <span className="text-[8px] uppercase tracking-wider text-[var(--text-low)] block truncate">
+                        {status}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </GlassCard>
 
-             <AgentLogAccordion
-               accent="emerald"
-               toolTraces={(planResult.tool_trace || []).slice(0, visibleTraceCount)}
-               title="Agent Trace"
-             />
-           </>
-         )}
+        {/* ─── BOOKINGS LIST OVERVIEW ─────────────────────────────────────── */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-mid)]">
+              All Bookings ({bookings.length})
+            </h3>
+            <span className="text-xs text-[var(--text-low)]">Click any item for details</span>
+          </div>
+
+          {loading ? (
+            <p className="text-xs text-[var(--text-low)] py-4 animate-pulse">Loading bookings schedule...</p>
+          ) : bookings.length === 0 ? (
+            <GlassCard className="p-6 text-center text-xs text-[var(--text-mid)]">
+              No machine bookings found yet.{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/farmer/book')}
+                className="text-[var(--emerald)] underline font-bold"
+              >
+                Book your first machine slot &rarr;
+              </button>
+            </GlassCard>
+          ) : (
+            <div className="space-y-2.5">
+              {bookings.map((b) => {
+                const s = b.status?.toLowerCase();
+                const isComp = s === 'completed';
+                const isPend = s === 'pending';
+                const badgeClass = isComp
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : isPend
+                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                  : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
+
+                return (
+                  <button
+                    key={b.booking_id}
+                    type="button"
+                    onClick={() => setSelectedBooking(b)}
+                    className="w-full text-left p-3.5 rounded-xl bg-[var(--bg-1)]/70 hover:bg-[var(--bg-2)]/80 border border-[var(--border)] hover:border-[var(--emerald)]/50 transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--emerald)]/10 border border-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] shrink-0 group-hover:scale-105 transition-transform">
+                        <LuTractor className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate leading-tight">
+                          {b.machine_type}
+                        </h4>
+                        <p className="text-xs text-[var(--text-mid)] truncate mt-0.5">
+                          {formatIST(b.date, { weekday: 'short', month: 'short', day: 'numeric' })} • {b.owner_label}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeClass}`}>
+                        {b.status}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ─── POPUP CALENDAR CARD MODAL ────────────────────────────────────── */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-0)] border border-[var(--emerald)]/40 shadow-2xl p-6 relative space-y-5 animate-in zoom-in-95 duration-200">
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setSelectedBooking(null)}
+              className="absolute top-4 right-4 text-[var(--text-low)] hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            >
+              <LuX className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[var(--emerald)]/20 border border-[var(--emerald)]/40 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
+                <LuTractor className="w-6 h-6" />
+              </div>
+              <div>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider inline-block mb-1 ${
+                    selectedBooking.status === 'COMPLETED'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                      : selectedBooking.status === 'PENDING'
+                      ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                      : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                  }`}
+                >
+                  {selectedBooking.status}
+                </span>
+                <h3 className="text-lg font-bold text-[var(--text-hi)] leading-tight">
+                  {selectedBooking.machine_type}
+                </h3>
+              </div>
+            </div>
+
+            {/* Details Grid */}
+            <div className="p-4 rounded-xl bg-[var(--bg-1)] border border-[var(--border)] space-y-2.5 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-[var(--border)]/60">
+                <span className="text-[var(--text-low)]">Booking Date:</span>
+                <span className="font-semibold text-[var(--text-hi)]">
+                  {formatIST(selectedBooking.date, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[var(--border)]/60">
+                <span className="text-[var(--text-low)]">Booking ID:</span>
+                <span className="font-mono font-bold text-[var(--emerald)]">{selectedBooking.booking_id}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[var(--border)]/60">
+                <span className="text-[var(--text-low)]">Provider / Hub:</span>
+                <span className="font-medium text-[var(--text-hi)] text-right max-w-[60%] truncate">
+                  {selectedBooking.owner_label}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[var(--border)]/60">
+                <span className="text-[var(--text-low)]">Field Coverage:</span>
+                <span className="font-medium text-[var(--text-hi)]">{selectedBooking.acres || 5} acres</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[var(--text-low)]">Smoke Avoidance:</span>
+                <span className="font-semibold text-[var(--emerald)] flex items-center gap-1">
+                  <LuShieldCheck className="w-3.5 h-3.5" />
+                  ~{Math.round((selectedBooking.acres || 5) * 14.3)} kg PM2.5 saved
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              <PillButton
+                variant="accent"
+                onClick={() => {
+                  setSelectedBooking(null);
+                  router.push('/farmer/book');
+                }}
+                className="w-full text-xs"
+              >
+                Book Another Machine
+              </PillButton>
+              <PillButton
+                variant="glass"
+                onClick={() => setSelectedBooking(null)}
+                className="w-full text-xs"
+              >
+                Close
+              </PillButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

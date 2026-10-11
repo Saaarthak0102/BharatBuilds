@@ -390,7 +390,7 @@ export default function FarmerDashboard() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-[var(--text-hi)]">
-                        {plan.machine_option.machine_type} Available{plan.machine_option.is_sample ? ' (SAMPLE)' : ''}
+                        {plan.machine_option.machine_type} Available
                       </h3>
                       <p className="text-sm text-[var(--text-mid)]">{plan.machine_option.owner_label}</p>
                     </div>
@@ -534,7 +534,7 @@ export default function FarmerDashboard() {
                           {t('farmer.bestDay')}
                         </span>
                         <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">
-                          Score {plan?.score != null ? plan.score : '—'}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
+                          Score {plan?.score != null ? plan.score : '—'}/100
                         </span>
                       </div>
 
@@ -658,7 +658,7 @@ export default function FarmerDashboard() {
                                     month: 'short',
                                     day: 'numeric',
                                   })
-                                }${plan!.machine_option!.is_sample ? ' (SAMPLE)' : ''}`
+                                }`
                               : plan?.straw_outlet_option
                               ? `Consider Straw Outlet: ${plan.straw_outlet_option.name}`
                               : 'Check straw outlets for alternate disposal'}
@@ -673,13 +673,13 @@ export default function FarmerDashboard() {
                     {/* Stats row chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
-                        Bookings: {bookingsCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                        Bookings: {bookingsCount}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Completed: {completedCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                        Completed: {completedCount}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Upcoming: {upcomingCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                        Upcoming: {upcomingCount}
                       </span>
                     </div>
 

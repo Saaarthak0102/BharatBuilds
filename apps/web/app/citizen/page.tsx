@@ -17,6 +17,7 @@ import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ReportCardModal } from '@/components/citizen/ReportCardModal';
 import { AlertBanner } from '@/components/citizen/AlertBanner';
 import { apiClient } from '@/lib/api/client';
+import { isDemoMode, getDemoToday, getDemoWeather } from '@/lib/demo';
 import { TodayResponse, CitizenProfile, WeatherResponse, CommunityReport } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
 import { formatIST, timeIST, relativeAgo } from '@/lib/utils/date';
@@ -188,20 +189,30 @@ export default function CitizenDashboard() {
       apiClient.reports.community({ limit: 50 }),
     ]);
 
-    if (todayRes.status === 'fulfilled') {
+    if (todayRes.status === 'fulfilled' && todayRes.value?.data) {
       setToday(todayRes.value.data);
       setTodayError(false);
     } else {
-      setToday(null);
-      setTodayError(true);
+      if (isDemoMode()) {
+        setToday(getDemoToday(areaId));
+        setTodayError(false);
+      } else {
+        setToday(null);
+        setTodayError(true);
+      }
     }
 
-    if (weatherRes.status === 'fulfilled') {
+    if (weatherRes.status === 'fulfilled' && weatherRes.value?.data) {
       setWeather(weatherRes.value.data);
       setWeatherError(false);
     } else {
-      setWeather(null);
-      setWeatherError(true);
+      if (isDemoMode()) {
+        setWeather(getDemoWeather(areaId));
+        setWeatherError(false);
+      } else {
+        setWeather(null);
+        setWeatherError(true);
+      }
     }
 
     if (reportsRes.status === 'fulfilled') {
@@ -604,13 +615,13 @@ export default function CitizenDashboard() {
                     {/* Community counts chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
-                        Reports: {reportsError ? '—' : reportsCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Reports: {reportsError ? '—' : reportsCount}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Routed: {reportsError ? '—' : routedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Routed: {reportsError ? '—' : routedCount}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Resolved: {reportsError ? '—' : resolvedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Resolved: {reportsError ? '—' : resolvedCount}
                       </span>
                     </div>
 

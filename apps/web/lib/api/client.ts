@@ -5,6 +5,7 @@ import { mockReports } from '../mock/reports';
 import { mockStrawOutlets } from '../mock/strawOutlets';
 import { mockMapLayers } from '../mock/mapLayers';
 import { authClient } from '../auth/authClient';
+import { cognitoClient } from '../auth/cognitoAuth';
 import type {
   PlanResult,
   TodayResponse,
@@ -63,10 +64,29 @@ const mockReportStore = new Map<string, MockReportEntry>();
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   let token: string | null = null;
-  try {
-    token = await authClient.getIdToken();
-  } catch {
-    token = authClient.getSession()?.idToken || null;
+  if (isDemoMode()) {
+    try {
+      const realCognitoToken = await cognitoClient.getIdToken();
+      if (realCognitoToken && !realCognitoToken.startsWith('demo-local-')) {
+        token = realCognitoToken;
+      }
+    } catch {
+      // ignore
+    }
+    if (!token) {
+      const cognitoStored = cognitoClient.getSession()?.idToken;
+      if (cognitoStored && !cognitoStored.startsWith('demo-local-')) {
+        token = cognitoStored;
+      }
+    }
+  }
+
+  if (!token) {
+    try {
+      token = await authClient.getIdToken();
+    } catch {
+      token = authClient.getSession()?.idToken || null;
+    }
   }
 
   const headers = new Headers(options.headers || {});
@@ -115,13 +135,15 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   }
 
   if (response.status === 401) {
-    try {
-      await authClient.logout();
-    } catch {
-      // ignore
-    }
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+    if (!isDemoMode()) {
+      try {
+        await authClient.logout();
+      } catch {
+        // ignore
+      }
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
     const err = new Error(responseData?.error?.message || responseData?.message || 'Unauthorized');
     (err as any).status = 401;
@@ -923,6 +945,49 @@ export const apiClient = {
     uploadPhoto,
     classify: classifyPhoto,
     submit: submitReport,
+  },
+  subscriptions: {
+    create: async (data: {
+      area_id: string;
+      threshold: number;
+      email: string;
+    }): Promise<ApiResponse<{ status: string; subscription_id?: string; is_sample?: boolean }>> => {
+      if (isMockMode) {
+        return {
+          data: {
+            status: 'subscribed',
+            subscription_id: `sub-${Math.random().toString(36).substring(2, 9)}`,
+            is_sample: true,
+          },
+        };
+      }
+      if (!isDemoMode()) {
+        return fetchWithAuth(API_ENDPOINTS.SUBSCRIPTIONS.CREATE, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+      }
+      try {
+        const res = await fetchWithAuth(API_ENDPOINTS.SUBSCRIPTIONS.CREATE, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+        demoStatusTracker.setSource('today', 'live');
+        return res;
+      } catch (err) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('saans_alert_enabled', 'true');
+          localStorage.setItem('saans_alert_threshold', String(data.threshold));
+        }
+        return {
+          data: {
+            status: 'subscribed_local',
+            subscription_id: 'sub-demo-local',
+            is_sample: true,
+          },
+        };
+      }
+    },
   },
   auth: {
     getProfile,
