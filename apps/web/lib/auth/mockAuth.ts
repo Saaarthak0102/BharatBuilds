@@ -90,6 +90,20 @@ export function mockLogin(data: LoginData): Session {
 export function mockLogout(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('saans_cognito_session');
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith('CognitoIdentityServiceProvider') ||
+          key.includes('session'))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    sessionStorage.removeItem('saans_signed_out');
   }
 }
 

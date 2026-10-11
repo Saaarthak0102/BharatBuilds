@@ -13,7 +13,10 @@ export default function FarmerLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated || !session) {
-        router.replace('/login');
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("saans_signed_out");
+        }
+        router.replace("/login");
       } else if (session.role !== 'farmer') {
         router.replace(getDashboardPath(session.role));
       }

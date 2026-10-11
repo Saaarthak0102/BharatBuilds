@@ -13,7 +13,10 @@ export default function CitizenLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated || !session) {
-        router.replace('/login');
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("saans_signed_out");
+        }
+        router.replace("/login");
       } else if (session.role !== 'citizen') {
         router.replace(getDashboardPath(session.role));
       }

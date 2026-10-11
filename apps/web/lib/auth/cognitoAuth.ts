@@ -346,13 +346,38 @@ export const cognitoClient: AuthClient = {
     return session;
   },
 
-  async logout(): Promise<void> {
-    const userPool = getUserPool();
-    const currentUser = userPool.getCurrentUser();
-    if (currentUser) {
-      currentUser.signOut();
+    async logout(): Promise<void> {
+    try {
+      const userPool = getUserPool();
+      const currentUser = userPool?.getCurrentUser();
+      if (currentUser) {
+        currentUser.signOut();
+      }
+    } catch (e) {
+      console.warn('Cognito signOut error:', e);
+    } finally {
+      clearStoredSession();
+      if (typeof window !== 'undefined') {
+        try {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (
+              key &&
+              (key.startsWith('CognitoIdentityServiceProvider') ||
+                key === COGNITO_SESSION_STORAGE_KEY ||
+                key === 'saans_mock_session')
+            ) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach((k) => localStorage.removeItem(k));
+          sessionStorage.removeItem('saans_signed_out');
+        } catch (e) {
+          console.warn('Failed clearing storage during logout:', e);
+        }
+      }
     }
-    clearStoredSession();
   },
 
   getSession(): Session | null {

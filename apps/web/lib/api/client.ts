@@ -5,11 +5,20 @@ import { mockReports } from '../mock/reports';
 import { mockStrawOutlets } from '../mock/strawOutlets';
 import { mockMapLayers } from '../mock/mapLayers';
 import { authClient } from '../auth/authClient';
-import type { PlanResult, TodayResponse, MapLayers, Report, ApiResponse, MachineOption, FarmerProfile } from '../types';
+import type { PlanResult, TodayResponse, MapLayers, Report, ApiResponse, MachineOption, FarmerProfile, CitizenProfile, Role, Language } from '../types';
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-export const isMockMode = process.env.NEXT_PUBLIC_USE_MOCKS === 'true' || API_MODE === 'mock';
+
+// Precise mock mode determination
+export const isMockMode =
+  process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+    ? true
+    : process.env.NEXT_PUBLIC_USE_MOCKS === 'false'
+    ? false
+    : process.env.NEXT_PUBLIC_AUTH_MODE === 'cognito'
+    ? false
+    : API_MODE === 'mock';
 
 // In-memory mock store for simulated report lifecycle in mock mode
 interface MockReportEntry {
@@ -52,12 +61,16 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
       window.location.href = '/login';
     }
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData?.error?.message || 'Unauthorized');
+    const err = new Error(errorData?.error?.message || 'Unauthorized');
+    (err as any).status = 401;
+    throw err;
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData?.error?.message || 'API request failed');
+    const err = new Error(errorData?.error?.message || 'API request failed');
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();
@@ -201,33 +214,131 @@ export async function getToday(areaId?: string): Promise<ApiResponse<TodayRespon
   );
 }
 
-export async function getProfile(): Promise<ApiResponse<CitizenProfile | FarmerProfile>> {
+// ─── Profile Mapping & Retrieval (Backend snake_case -> UI camelCase) ──────
+
+export interface MappedProfile {
+  userId: string;
+  role: Role;
+  name: string;
+  email?: string;
+  phone?: string;
+  language: Language;
+  createdAt?: string;
+  // Farmer fields (camelCase)
+  villageId?: string;
+  villageName?: string;
+  district?: string;
+  landSizeAcres?: number;
+  mainCrop?: string;
+  cropStage?: string;
+  hasOwnMachine?: boolean;
+  // Citizen fields (camelCase)
+  areaId?: string;
+  areaName?: string;
+  alertThreshold?: number;
+  alertOptIn?: boolean;
+  householdNote?: string;
+  hasKids?: boolean;
+  hasElderly?: boolean;
+  // Raw passthrough
+  [key: string]: any;
+}
+
+export function mapProfileResponse(raw: Record<string, any>): MappedProfile {
+  if (!raw) return raw as any;
+  return {
+    ...raw,
+    userId: raw.user_id || raw.userId || '',
+    role: (raw.role || 'citizen') as Role,
+    name: raw.name || '',
+    email: raw.email || undefined,
+    phone: raw.phone || undefined,
+    language: (raw.language || 'en') as Language,
+    createdAt: raw.created_at || raw.createdAt,
+    // Farmer fields mapped to UI camelCase
+    villageId: raw.village_id || raw.villageId,
+    villageName: raw.village_name || raw.villageName,
+    district: raw.district,
+    landSizeAcres: raw.land_size_acres !== undefined ? Number(raw.land_size_acres) : raw.landSizeAcres,
+    mainCrop: raw.main_crop || raw.mainCrop,
+    cropStage: raw.crop_stage || raw.cropStage,
+    hasOwnMachine: raw.has_own_machine !== undefined ? Boolean(raw.has_own_machine) : raw.hasOwnMachine,
+    // Citizen fields mapped to UI camelCase
+    areaId: raw.area_id || raw.areaId,
+    areaName: raw.area_name || raw.areaName,
+    alertThreshold: raw.alert_threshold !== undefined ? Number(raw.alert_threshold) : raw.alertThreshold,
+    alertOptIn: raw.alert_opt_in !== undefined ? Boolean(raw.alert_opt_in) : raw.alertOptIn,
+    householdNote: raw.household_note || raw.householdNote,
+    hasKids: raw.has_kids !== undefined ? Boolean(raw.has_kids) : raw.hasKids,
+    hasElderly: raw.has_elderly !== undefined ? Boolean(raw.has_elderly) : raw.hasElderly,
+  };
+}
+
+export async function getProfile(): Promise<{
+  data: MappedProfile | null;
+  isNotFound?: boolean;
+}> {
   if (isMockMode) {
-    return new Promise((resolve) =>
-      resolve({
-        data: {
-          user_id: 'mock-user-123',
+    const session = authClient.getSession();
+    const role = session?.role || 'farmer';
+    if (role === 'farmer') {
+      return {
+        data: mapProfileResponse({
+          user_id: session?.user_id || 'mock-farmer-1',
+          role: 'farmer',
+          name: session?.name || 'Gurpreet Singh',
+          phone: session?.phone || '+919876543210',
+          village_id: 'village-patiala-001',
+          village_name: 'Rajpura',
+          district: 'Patiala',
+          land_size_acres: 10,
+          main_crop: 'wheat',
+          crop_stage: 'harvested',
+          has_own_machine: false,
+          language: session?.language || 'pa',
+          created_at: new Date().toISOString(),
+          is_sample: true,
+        }),
+      };
+    } else {
+      return {
+        data: mapProfileResponse({
+          user_id: session?.user_id || 'mock-citizen-1',
           role: 'citizen',
-          name: 'Ananya Sharma',
-          email: 'ananya@example.com',
-          phone: '+919876543210',
-          language: 'en',
+          name: session?.name || 'Ananya Sharma',
+          email: session?.email || 'ananya@example.com',
+          phone: session?.phone || '+919876543210',
+          language: session?.language || 'en',
           area_id: 'ward-east-delhi-001',
           area_name: 'Anand Vihar',
           has_kids: false,
           has_elderly: false,
+          alert_threshold: 200,
           created_at: new Date().toISOString(),
           is_sample: true,
-        } as CitizenProfile,
-      })
-    );
+        }),
+      };
+    }
   }
-  return fetchWithAuth(API_ENDPOINTS.AUTH.GET_PROFILE);
+
+  try {
+    const res = await fetchWithAuth(API_ENDPOINTS.AUTH.GET_PROFILE);
+    if (res && res.data) {
+      return { data: mapProfileResponse(res.data) };
+    }
+    return { data: null };
+  } catch (err: any) {
+    if (err?.status === 404 || /not found/i.test(err?.message || '')) {
+      return { data: null, isNotFound: true };
+    }
+    throw err;
+  }
 }
 
 // ─── API Client Object ──────────────────────────────────────────────────────
 
 export const apiClient = {
+  getProfile: getProfile,
   farmer: {
     plan: async (data: {
       village_id: string;
@@ -295,33 +406,8 @@ export const apiClient = {
       return fetchWithAuth(`${API_ENDPOINTS.FARMER.STRAW_OUTLETS}?district=${districtId}`);
     },
     getProfile: async (): Promise<ApiResponse<FarmerProfile>> => {
-      if (isMockMode) {
-        return new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                data: {
-                  user_id: 'mock-user-123',
-                  role: 'farmer',
-                  name: 'Gurpreet Singh',
-                  phone: '+919876543210',
-                  village_id: 'village-patiala-001',
-                  village_name: 'Rajpura',
-                  district: 'Patiala',
-                  land_size_acres: 10,
-                  main_crop: 'wheat',
-                  crop_stage: 'harvested',
-                  has_own_machine: false,
-                  language: 'en',
-                  created_at: new Date().toISOString(),
-                  is_sample: true,
-                } as FarmerProfile,
-              }),
-            1000
-          )
-        );
-      }
-      return fetchWithAuth(API_ENDPOINTS.AUTH.GET_PROFILE);
+      const res = await getProfile();
+      return { data: res.data as unknown as FarmerProfile };
     },
   },
   citizen: {
@@ -359,6 +445,10 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
     },
+    getProfile: async (): Promise<ApiResponse<CitizenProfile>> => {
+      const res = await getProfile();
+      return { data: res.data as unknown as CitizenProfile };
+    },
   },
   map: {
     layers: async (bbox?: string): Promise<ApiResponse<MapLayers>> => {
@@ -389,4 +479,3 @@ export const apiClient = {
     getProfile,
   },
 };
-
