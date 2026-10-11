@@ -356,7 +356,7 @@ function BookMachineContent() {
               data-accent="emerald"
               className="border border-[var(--emerald)]/20 relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--emerald)]/10 blur-[80px] rounded-full pointer-events-none" />
+              <div className="!absolute top-0 right-0 w-64 h-64 bg-[var(--emerald)]/10 blur-[80px] rounded-full pointer-events-none -z-0" />
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">

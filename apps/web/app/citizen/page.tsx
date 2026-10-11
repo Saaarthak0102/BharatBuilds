@@ -328,7 +328,7 @@ export default function CitizenDashboard() {
         ) : (
           <>
             <GlassCard data-accent="cyan" className="border border-[var(--cyan)]/20 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-64 h-64 bg-[var(--cyan)]/10 blur-[80px] rounded-full pointer-events-none" />
+              <div className="!absolute top-0 left-0 w-64 h-64 bg-[var(--cyan)]/10 blur-[80px] rounded-full pointer-events-none -z-0" />
               
               <div className="relative z-10 flex flex-col items-center text-center py-8">
                 <Chip className="bg-[var(--cyan)]/10 text-[var(--cyan)] border-[var(--cyan)]/20 mb-8 px-4 py-1">
