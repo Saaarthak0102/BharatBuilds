@@ -1,11 +1,12 @@
 import { SampleDataBadge } from '../common/SampleDataBadge';
+import { Logo } from '../common/Logo';
 
 export function Footer() {
   return (
     <footer className="bg-text-primary text-white py-12 mt-20">
       <div className="container mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex flex-col items-center md:items-start gap-2">
-          <div className="text-2xl font-bold tracking-tight">Saans</div>
+          <Logo size={24} withWordmark />
           <p className="text-text-muted text-sm max-w-md text-center md:text-left">
             Built for WeMakeDevs x AWS Environmental Hacks, Air track.
           </p>

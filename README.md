@@ -1,4 +1,8 @@
-# Saans — From Field to Delhi
+<p align="center">
+  <img src="apps/web/public/icon.jpeg" alt="Saans Logo" width="96" height="96" />
+</p>
+
+<h1 align="center">Saans — From Field to Delhi</h1>
 
 > An agent-driven web platform for the Delhi Diwali and stubble-burning smog season.
 > **WeMakeDevs × AWS Environmental Hacks, Air track.**

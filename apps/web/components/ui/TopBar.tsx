@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PillButton } from "./PillButton";
+import { Logo } from "@/components/common/Logo";
 
 export function TopBar() {
   const pathname = usePathname();
@@ -13,9 +14,7 @@ export function TopBar() {
     <header className="sticky top-0 left-0 right-0 z-[var(--z-sticky)] border-b border-[var(--border)] bg-[var(--bg-0)]/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="font-serif italic text-2xl tracking-tight text-[var(--text-hi)]">Saans</span>
-          </Link>
+          <Logo size={32} withWordmark priority href="/" />
           
 
         </div>

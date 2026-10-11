@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { TopBar } from "@/components/ui/TopBar";
+import { Logo } from "@/components/common/Logo";
 import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { PillButton } from "@/components/ui/PillButton";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -171,7 +172,7 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--border)] bg-[var(--bg-0)] pt-16 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8 text-[var(--text-mid)]">
           <div className="flex items-center gap-4">
-            <span className="font-serif italic text-2xl text-[var(--text-hi)]">Saans</span>
+            <Logo size={24} withWordmark href="/" />
             <span className="text-sm">&copy; 2026</span>
           </div>
           <div className="text-xs text-center md:text-left max-w-sm p-3 rounded-lg bg-[var(--bg-1)] border border-[var(--border)]">
