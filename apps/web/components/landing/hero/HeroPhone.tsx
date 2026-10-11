@@ -9,7 +9,7 @@ import { PhoneSlideCitizen } from "./PhoneSlideCitizen";
 export function HeroPhone({ className }: { className?: string }) {
   const [activeSlide, setActiveSlide] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState(false);
-  const slides = [PhoneSlideFarmer, PhoneSlideMap, PhoneSlideCitizen];
+  const slides = [PhoneSlideFarmer, PhoneSlideCitizen, PhoneSlideMap];
 
   // Auto-cycle
   React.useEffect(() => {
