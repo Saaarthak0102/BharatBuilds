@@ -154,6 +154,12 @@ export interface PlanResult {
   tool_trace: ToolTraceEntry[];
   seven_day_scores: DayScore[];
   is_sample: boolean;
+  window_start?: string;
+  window_end?: string;
+  generated_at?: string;
+  sowing_window_status?: 'inside' | 'before' | 'after';
+  no_ideal_day?: boolean;
+  message_key?: string | null;
 }
 
 // ─── Today Response Models ──────────────────────────────

@@ -1,8 +1,6 @@
 """
 Burn-window Planner Agent (Strands Agents SDK)
 
-STUB ONLY — defines the agent, tools, and flow.
-
 The planner is the star agent. It:
 1. Gathers weather, wind, fire, and sowing data via tools
 2. Runs the deterministic scorer over the next 7 days
@@ -16,7 +14,7 @@ Max steps: 10 (configurable via MAX_AGENT_STEPS)
 from typing import Optional
 from pydantic import BaseModel, Field
 import contextvars
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from strands import Agent
 from strands.models import BedrockModel
@@ -26,10 +24,12 @@ from agents.common.model import build_model, structured_complete
 from agents.planner.tools import (
     get_forecast, get_wind, get_fire_hotspots, get_sowing_window,
     find_machine_slots, find_straw_outlets,
-    planner_runner_var, planner_trace_var, planner_payloads_var
+    planner_runner_var, planner_trace_var, planner_payloads_var,
+    resolve_district_from_village_or_name
 )
-from agents.planner.scoring import score_days, pick_best, replan
+from agents.planner.scoring import score_days, pick_best, replan, get_sowing_window_for_stage, load_scoring_config
 from agents.planner.templates import get_fallback_reason
+from api.common.time import today_ist, now_ist
 from api.models.plan_result import PlanResult, DayScore, ToolTraceEntry
 from api.models import CropStage
 
@@ -49,6 +49,9 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
     t_runner = planner_runner_var.set(runner)
     t_trace = planner_trace_var.set(trace)
     t_payloads = planner_payloads_var.set(payloads)
+
+    w_start = start_date or today_ist().isoformat()
+    w_end = end_date or (today_ist() + timedelta(days=6)).isoformat()
     
     try:
         model = build_model()
@@ -58,13 +61,16 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             system_prompt=open("services/agents/prompts/planner.md").read()
         )
         
-        date_instruction = "today to 7 days from now"
-        if start_date and end_date:
-            date_instruction = f"{start_date} to {end_date}"
+        # Resolve village -> district in code (from seed)
+        dist_name = resolve_district_from_village_or_name(village_id)
+        firms_key = f"district-{dist_name.lower()}"
+        outlets_district_id = dist_name.lower()
+
+        date_instruction = f"{w_start} to {w_end}"
             
         prompt = (
             f"Gather data for village_id='{village_id}'. "
-            f"Use district='{village_id}-district'. "
+            f"Use district='{firms_key}'. "
             f"Crop stage is '{crop_stage}'. "
             f"Machine slots date range is {date_instruction}."
         )
@@ -77,19 +83,24 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
         if not forecast_payload or not fire_payload or not sowing_payload:
             raise ValueError("Agent failed to gather required data via tools.")
             
-        forecast_7d = forecast_payload.get("forecasts", [])
+        forecast_7d = forecast_payload.get("forecasts", []) or forecast_payload.get("forecast", [])
         fire_counts = fire_payload.get("hotspot_count", 0)
+        
+        # Resolve sowing window and status using config and dates
+        sw_start, sw_end, sw_status = get_sowing_window_for_stage(
+            crop_stage,
+            as_of=today_ist(),
+            req_window={"start": w_start, "end": w_end}
+        )
         sowing_window = {
-            "start": sowing_payload.get("window_start", ""),
-            "end": sowing_payload.get("window_end", "")
+            "start": sowing_payload.get("window_start") or sw_start,
+            "end": sowing_payload.get("window_end") or sw_end
         }
         
         machine_slots_payload = payloads.get("find_machine_slots", {})
         machine_slots = machine_slots_payload.get("slots", [])
         
-        req_window = None
-        if start_date and end_date:
-            req_window = {"start": start_date, "end": end_date}
+        req_window = {"start": w_start, "end": w_end}
             
         scored = score_days(forecast_7d, fire_counts, sowing_window, machine_slots, crop_stage, requested_window=req_window)
         best = pick_best(scored)
@@ -126,9 +137,23 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
                     "is_sample": o.get("is_sample", True)
                 }
 
+        scoring_cfg = load_scoring_config()
+        min_ideal_score = scoring_cfg.get("min_ideal_score", 60)
+        no_ideal_day = best["score"] < min_ideal_score
+
+        if sw_status == "before":
+            message_key = "sowing_window_before"
+        elif sw_status == "after":
+            message_key = "sowing_window_after"
+        elif no_ideal_day:
+            message_key = "no_ideal_day"
+        else:
+            message_key = "ideal_day_found"
+
         reason_prompt = (
             f"Write a 2-3 sentence explanation for the farmer in {language}. "
             f"The best day is {best['date']} with score {best['score']}. "
+            f"Sowing window status is {sw_status}. No ideal day flag is {no_ideal_day}. "
             f"Machine option: {machine_opt}. Straw option: {straw_opt}."
         )
         
@@ -144,32 +169,62 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             reason_text=reasoning.reason_text,
             tool_trace=trace,
             seven_day_scores=[DayScore(date=d["date"], score=d["score"]) for d in scored],
-            is_sample=is_sample
+            is_sample=is_sample,
+            window_start=w_start,
+            window_end=w_end,
+            generated_at=now_ist().isoformat(),
+            sowing_window_status=sw_status,
+            no_ideal_day=no_ideal_day,
+            message_key=message_key,
         )
         return result.model_dump(), "success"
         
     except (Exception, StepLimitExceeded, AgentTimeout) as e:
         import logging
         logging.getLogger(__name__).error("Agent run failed: %s", str(e), exc_info=True)
-        return _fallback_result(village_id, crop_stage, language, str(e), trace)
+        return _fallback_result(village_id, crop_stage, language, str(e), trace, w_start, w_end)
     finally:
         planner_runner_var.reset(t_runner)
         planner_trace_var.reset(t_trace)
         planner_payloads_var.reset(t_payloads)
 
 
-def _fallback_result(village_id: str, crop_stage: str, language: str, error: str, trace: list) -> tuple[dict, str]:
+def _fallback_result(village_id: str, crop_stage: str, language: str, error: str, trace: list, start_date: str | None = None, end_date: str | None = None) -> tuple[dict, str]:
     reason = get_fallback_reason(language)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = today_ist().isoformat()
+    w_start = start_date or today
+    w_end = end_date or (today_ist() + timedelta(days=6)).isoformat()
+    sw_start, sw_end, sw_status = get_sowing_window_for_stage(crop_stage, as_of=today_ist(), req_window={"start": w_start, "end": w_end})
+    
+    scoring_cfg = load_scoring_config()
+    min_ideal_score = scoring_cfg.get("min_ideal_score", 60)
+    score_val = 50
+    no_ideal_day = score_val < min_ideal_score
+
+    if sw_status == "before":
+        message_key = "sowing_window_before"
+    elif sw_status == "after":
+        message_key = "sowing_window_after"
+    elif no_ideal_day:
+        message_key = "no_ideal_day"
+    else:
+        message_key = "ideal_day_found"
+
     result_dict = PlanResult(
-        best_day=today,
-        score=50,
+        best_day=w_start,
+        score=score_val,
         score_breakdown={"sowing_window": 10, "rain_and_soil": 10, "wind": 10, "fire_activity": 10, "machine_availability": 10},
         machine_option=None,
         straw_outlet_option=None,
         reason_text=reason,
         tool_trace=trace,
-        seven_day_scores=[DayScore(date=today, score=50)],
-        is_sample=True
+        seven_day_scores=[DayScore(date=w_start, score=score_val)],
+        is_sample=True,
+        window_start=w_start,
+        window_end=w_end,
+        generated_at=now_ist().isoformat(),
+        sowing_window_status=sw_status,
+        no_ideal_day=no_ideal_day,
+        message_key=message_key,
     ).model_dump()
     return result_dict, "fallback"

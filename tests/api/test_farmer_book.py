@@ -144,3 +144,35 @@ class TestFarmerBookEndpoint:
         data1 = json.loads(res1["body"])["data"]
         assert len(data1["bookings"]) == 1
         assert data1["bookings"][0]["user_id"] == "user-1"
+
+    def test_farmer_booking_populates_acres_from_users_table(self, moto_dynamodb):
+        """Farmer booking reads caller land_size_acres from UsersTable and populates acres."""
+        from services.api.handlers.farmer_book import handler
+        from api.common.config import config
+        dynamodb = boto3.client("dynamodb", region_name="ap-south-1")
+        
+        # Seed a user profile with land_size_acres
+        dynamodb.put_item(
+            TableName=os.environ.get("USERS_TABLE", config.USERS_TABLE),
+            Item={
+                "user_id": {"S": "farmer-with-land"},
+                "role": {"S": "farmer"},
+                "land_size_acres": {"N": "7.5"},
+                "village_id": {"S": "village-456"}
+            }
+        )
+
+        res = handler(
+            build_event(
+                "POST",
+                "/v1/farmer/book",
+                body={"village_id": "village-456", "date": "2024-11-11", "idempotency_key": "land-k1"},
+                role="farmer",
+                sub="farmer-with-land"
+            ),
+            None
+        )
+        assert res["statusCode"] == 201
+        data = json.loads(res["body"])["data"]
+        assert data["acres"] == 7.5
+

@@ -1,13 +1,17 @@
 import time
 import os
+import json
+from pathlib import Path
 from boto3.dynamodb.conditions import Key
 import boto3
 import contextvars
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ValidationError
 
 from strands.tools import tool
 from ingest import cache
+from api.common.time import today_ist, now_ist
+from agents.planner.scoring import get_sowing_window_for_stage
 
 # Optional runtime check logic via contextvars
 planner_runner_var = contextvars.ContextVar("planner_runner", default=None)
@@ -39,6 +43,41 @@ def _get_table(table_name: str):
     region = os.environ.get("AWS_REGION", "ap-south-1")
     return boto3.resource("dynamodb", region_name=region).Table(table_name)
 
+def _load_village_map() -> dict[str, str]:
+    potential_roots = [
+        Path.cwd() / "data" / "seed" / "villages.json",
+        Path(__file__).resolve().parents[3] / "data" / "seed" / "villages.json",
+        Path("/var/task/data/seed/villages.json"),
+    ]
+    for p in potential_roots:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    v_list = json.load(f)
+                    return {v["village_id"]: v["district"] for v in v_list if "village_id" in v and "district" in v}
+            except Exception:
+                pass
+    return {
+        "village-patiala-001": "Patiala",
+        "village-patiala-002": "Patiala",
+        "village-ludhiana-001": "Ludhiana",
+        "village-ludhiana-002": "Ludhiana",
+        "village-sangrur-001": "Sangrur",
+        "village-sangrur-002": "Sangrur",
+        "village-karnal-001": "Karnal",
+        "village-karnal-002": "Karnal",
+    }
+
+VILLAGE_DISTRICT_MAP = _load_village_map()
+
+def resolve_district_from_village_or_name(input_str: str) -> str:
+    cleaned = input_str.strip().lower()
+    for v_id, dist in VILLAGE_DISTRICT_MAP.items():
+        if v_id in cleaned or cleaned in v_id:
+            return dist.lower()
+    cleaned = cleaned.replace("district-", "").replace("-district", "")
+    return cleaned
+
 class ForecastArgs(BaseModel):
     location: str = Field(description="Village or district name / geohash")
     days: int = Field(default=7, description="Number of days to forecast")
@@ -53,25 +92,49 @@ def get_forecast(location: str, days: int = 7) -> str:
         _record_trace("get_forecast", location, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: Invalid arguments: {e}"
 
+    today = today_ist()
+    req_dates = [(today + timedelta(days=i)).isoformat() for i in range(args.days)]
     seed_data = {
         "location": location,
         "forecasts": [
-            {"date": "2026-10-09", "temp_max_c": 32.0, "precipitation_sum": 0.0, "wind_speed_10m_max": 5.0, "carries_toward_city": False}
-        ] * args.days
+            {
+                "date": req_dates[i],
+                "temp_max_c": 32.0,
+                "precipitation_sum": 0.0,
+                "wind_speed_10m_max": 5.0,
+                "carries_toward_city": False,
+            }
+            for i in range(args.days)
+        ],
     }
-    
+
     live = cache.get_cached("open_meteo", args.location, allow_expired=False)
-    if live:
-        payload, freshness, is_sample = live["payload"], "live", False
-    else:
-        stale = cache.get_last_good("open_meteo", args.location)
-        if stale:
-            payload, freshness, is_sample = stale["payload"], "stale", False
+    stale = None if live else cache.get_last_good("open_meteo", args.location)
+    cached_entry = live or stale
+
+    payload = seed_data
+    freshness = "seeded"
+    is_sample = True
+
+    if cached_entry:
+        raw_payload = cached_entry["payload"]
+        forecast_items = raw_payload.get("forecast") or raw_payload.get("forecasts") or []
+        today_str = today.isoformat()
+        # Drop past dates
+        valid_items = [f for f in forecast_items if f.get("date") and f.get("date") >= today_str]
+        valid_dates = {f.get("date") for f in valid_items}
+        # Check if cached forecast covers the window
+        if all(d in valid_dates for d in req_dates):
+            payload = {"location": location, "forecasts": valid_items}
+            freshness = "live" if live else "stale"
+            is_sample = False
         else:
-            payload, freshness, is_sample = seed_data, "seeded", True
-            
+            freshness = "stale"
+            is_sample = True
+            payload = seed_data
+
     _record_trace("get_forecast", args.location, True, freshness, is_sample, int((time.time() - start_t)*1000), payload=payload)
-    return payload if isinstance(payload, str) else __import__('json').dumps(payload)
+    return payload if isinstance(payload, str) else json.dumps(payload)
 
 
 class WindArgs(BaseModel):
@@ -88,26 +151,46 @@ def get_wind(location: str, days: int = 7) -> str:
         _record_trace("get_wind", location, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: {e}"
 
+    today = today_ist()
+    req_dates = [(today + timedelta(days=i)).isoformat() for i in range(args.days)]
     seed_data = {
         "location": location,
         "wind_data": [
-            {"date": "2026-10-09", "speed_kmh": 5.0, "direction_deg": 90, "carries_toward_city": False}
-        ] * args.days
+            {
+                "date": req_dates[i],
+                "speed_kmh": 5.0,
+                "direction_deg": 90,
+                "carries_toward_city": False,
+            }
+            for i in range(args.days)
+        ],
     }
-    
+
     live = cache.get_cached("open_meteo", args.location, allow_expired=False)
-    if live:
-        # Assuming payload has wind_data inside or we just return the full payload
-        payload, freshness, is_sample = live["payload"], "live", False
-    else:
-        stale = cache.get_last_good("open_meteo", args.location)
-        if stale:
-            payload, freshness, is_sample = stale["payload"], "stale", False
+    stale = None if live else cache.get_last_good("open_meteo", args.location)
+    cached_entry = live or stale
+
+    payload = seed_data
+    freshness = "seeded"
+    is_sample = True
+
+    if cached_entry:
+        raw_payload = cached_entry["payload"]
+        wind_items = raw_payload.get("wind_data") or []
+        today_str = today.isoformat()
+        valid_items = [w for w in wind_items if w.get("date") and w.get("date") >= today_str]
+        valid_dates = {w.get("date") for w in valid_items}
+        if all(d in valid_dates for d in req_dates):
+            payload = {"location": location, "wind_data": valid_items}
+            freshness = "live" if live else "stale"
+            is_sample = False
         else:
-            payload, freshness, is_sample = seed_data, "seeded", True
+            freshness = "stale"
+            is_sample = True
+            payload = seed_data
 
     _record_trace("get_wind", args.location, True, freshness, is_sample, int((time.time() - start_t)*1000), payload=payload)
-    return payload if isinstance(payload, str) else __import__('json').dumps(payload)
+    return payload if isinstance(payload, str) else json.dumps(payload)
 
 
 class FireArgs(BaseModel):
@@ -123,25 +206,28 @@ def get_fire_hotspots(district: str) -> str:
         _record_trace("get_fire_hotspots", district, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: {e}"
 
+    district_clean = resolve_district_from_village_or_name(args.district)
+    firms_key = f"district-{district_clean}"
+
     seed_data = {
-        "district": district,
+        "district": firms_key,
         "hotspot_count": 0,
         "hotspots": [],
-        "fetched_at": datetime.now(timezone.utc).isoformat()
+        "fetched_at": now_ist().isoformat()
     }
-    
-    live = cache.get_cached("firms", args.district, allow_expired=False)
+
+    live = cache.get_cached("firms", firms_key, allow_expired=False)
     if live:
         payload, freshness, is_sample = live["payload"], "live", False
     else:
-        stale = cache.get_last_good("firms", args.district)
+        stale = cache.get_last_good("firms", firms_key)
         if stale:
             payload, freshness, is_sample = stale["payload"], "stale", False
         else:
             payload, freshness, is_sample = seed_data, "seeded", True
 
-    _record_trace("get_fire_hotspots", args.district, True, freshness, is_sample, int((time.time() - start_t)*1000), payload=payload)
-    return payload if isinstance(payload, str) else __import__('json').dumps(payload)
+    _record_trace("get_fire_hotspots", firms_key, True, freshness, is_sample, int((time.time() - start_t)*1000), payload=payload)
+    return payload if isinstance(payload, str) else json.dumps(payload)
 
 
 class SowingArgs(BaseModel):
@@ -157,16 +243,18 @@ def get_sowing_window(crop_stage: str) -> str:
         _record_trace("get_sowing_window", crop_stage, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: {e}"
 
-    # Sample static guidance
+    sw_start, sw_end, status = get_sowing_window_for_stage(args.crop_stage)
     payload = {
         "crop_stage": args.crop_stage,
-        "window_start": "2026-10-05",
-        "window_end": "2026-10-25",
+        "window_start": sw_start,
+        "window_end": sw_end,
+        "sowing_window_status": status,
+        "source": "TO_VERIFY",
         "notes": "Optimal window based on PAU sample guidance."
     }
-    
-    _record_trace("get_sowing_window", args.crop_stage, True, "seeded", True, int((time.time() - start_t)*1000), payload=payload)
-    return __import__('json').dumps(payload)
+
+    _record_trace("get_sowing_window", args.crop_stage, True, "live", True, int((time.time() - start_t)*1000), payload=payload)
+    return json.dumps(payload)
 
 
 class MachineArgs(BaseModel):
@@ -185,7 +273,7 @@ def find_machine_slots(village_id: str, start_date: str, end_date: str) -> str:
         return f"Error: {e}"
 
     table = _get_table(os.environ.get("MACHINE_SLOTS_TABLE", "saans-machine-slots-dev"))
-    
+
     try:
         response = table.query(
             KeyConditionExpression=Key("village_id").eq(args.village_id) & Key("date").between(args.start_date, args.end_date)
@@ -202,7 +290,7 @@ def find_machine_slots(village_id: str, start_date: str, end_date: str) -> str:
         ok = False
 
     _record_trace("find_machine_slots", f"{args.village_id} {args.start_date}", ok, freshness, is_sample, int((time.time() - start_t)*1000), payload=payload)
-    return __import__('json').dumps(payload, default=str)
+    return json.dumps(payload, default=str)
 
 
 class StrawArgs(BaseModel):
@@ -218,15 +306,16 @@ def find_straw_outlets(district_id: str) -> str:
         _record_trace("find_straw_outlets", district_id, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: {e}"
 
+    norm_district_id = resolve_district_from_village_or_name(args.district_id)
     table = _get_table(os.environ.get("STRAW_OUTLETS_TABLE", "saans-straw-outlets-dev"))
-    
+
     try:
         response = table.query(
-            KeyConditionExpression=Key("district_id").eq(args.district_id)
+            KeyConditionExpression=Key("district_id").eq(norm_district_id)
         )
         outlets = cache._from_decimal(response.get("Items", []))
         payload = {
-            "district_id": args.district_id,
+            "district_id": norm_district_id,
             "outlets": outlets,
             "note": "Sample data. Contact your nearest depot or aggregator."
         }
@@ -235,5 +324,5 @@ def find_straw_outlets(district_id: str) -> str:
         payload = {"error": str(e), "outlets": []}
         ok = False
 
-    _record_trace("find_straw_outlets", args.district_id, ok, "live", True, int((time.time() - start_t)*1000), payload=payload)
-    return __import__('json').dumps(payload, default=str)
+    _record_trace("find_straw_outlets", norm_district_id, ok, "live", True, int((time.time() - start_t)*1000), payload=payload)
+    return json.dumps(payload, default=str)

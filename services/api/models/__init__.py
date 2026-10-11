@@ -223,6 +223,12 @@ class PlanResult(BaseModel):
     tool_trace: list[ToolTraceEntry]
     seven_day_scores: list[DayScore]
     is_sample: bool = True
+    window_start: Optional[str] = None
+    window_end: Optional[str] = None
+    generated_at: Optional[str] = None
+    sowing_window_status: Optional[str] = "inside"
+    no_ideal_day: bool = False
+    message_key: Optional[str] = None
 
 
 # --- Today response models ---

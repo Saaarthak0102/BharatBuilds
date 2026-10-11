@@ -388,6 +388,8 @@ Resources:
         - !Ref AgentBedrockPolicy
         - DynamoDBReadPolicy:
             TableName: !Ref DataCacheTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref DataCacheTable
         - DynamoDBReadPolicy:
             TableName: !Ref MachineSlotsTable
         - DynamoDBReadPolicy:
@@ -413,6 +415,8 @@ Resources:
             TableName: !Ref MachineSlotsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref BookingsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UsersTable
       Events:
         PostFarmerBook:
           Type: Api
@@ -426,6 +430,30 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/farmer/bookings
             Method: GET
+
+  SlotRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-slot-refresh-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.slot_refresh.handler
+      Timeout: 60
+      Policies:
+        - Statement:
+            - Sid: MachineSlotsWriteOnly
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:BatchWriteItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt MachineSlotsTable.Arn
+      Events:
+        DailyRefresh:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 19 * * ? *)
+            Description: Daily refresh of machine slots at 00:30 IST (19:00 UTC)
+            Enabled: true
 
   StrawOutletsFunction:
     Type: AWS::Serverless::Function
@@ -745,4 +773,7 @@ Outputs:
   TriageFunction:
     Description: Lambda function ARN for report triage
     Value: !GetAtt TriageFunction.Arn
+  SlotRefreshFunction:
+    Description: Lambda function ARN for machine slot refresh
+    Value: !GetAtt SlotRefreshFunction.Arn
 

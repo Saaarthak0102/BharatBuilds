@@ -25,6 +25,20 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 
+# Ensure services can be imported
+SERVICES_PATH = Path(__file__).resolve().parent.parent / "services"
+if str(SERVICES_PATH) not in sys.path:
+    sys.path.insert(0, str(SERVICES_PATH))
+
+try:
+    from api.common.time import today_ist
+except ImportError:
+    from datetime import timezone
+    IST = timezone(timedelta(hours=5, minutes=30))
+    def today_ist() -> date:
+        return datetime.now(IST).date()
+
+
 def parse_decimal(val: Any) -> Any:
     """Recursively convert float values to Decimal for DynamoDB compatibility."""
     if isinstance(val, float):
@@ -50,46 +64,33 @@ def load_json_seed(file_path: Path) -> list[dict[str, Any]]:
 def build_machine_slots(
     seed_machines: list[dict[str, Any]],
     start_date: date,
-    num_days: int = 14,
+    num_days: int = 21,
 ) -> list[dict[str, Any]]:
     """
-    Generate MachineSlots for num_days forward starting from start_date.
-
-    machines.json contains sample machines across distinct date offsets (days 0, 1, 2).
-    We cycle this pattern across num_days (e.g. 14 days) so that:
-    1. Every day in the forecast window has available machine slots.
-    2. Each village has at most one slot per date, preventing DynamoDB (village_id, date) collisions.
-    3. Slot IDs are deterministic and idempotent: slot_id = f"{orig_slot_id}-{date}".
-    4. Every item has is_sample = True.
+    Generate MachineSlots for num_days forward starting from start_date (today_ist() through +20 days).
+    Rolling per village across the window, not coupled to hardcoded machines.json dates.
+    Deterministic, idempotent, and tagged with is_sample=True.
     """
     if not seed_machines:
         return []
 
-    # Determine original base date from seed to compute relative day offsets
-    sorted_dates = sorted(m["date"] for m in seed_machines if "date" in m)
-    base_date_str = sorted_dates[0] if sorted_dates else "2024-11-05"
-    base_date = datetime.strptime(base_date_str, "%Y-%m-%d").date()
-
-    templates_by_offset: dict[int, list[dict[str, Any]]] = {}
+    templates_by_village: dict[str, list[dict[str, Any]]] = {}
     for machine in seed_machines:
-        m_date = datetime.strptime(machine["date"], "%Y-%m-%d").date()
-        offset = (m_date - base_date).days
-        templates_by_offset.setdefault(offset, []).append(machine)
+        v_id = str(machine["village_id"])
+        templates_by_village.setdefault(v_id, []).append(machine)
 
-    cycle_length = max(templates_by_offset.keys()) + 1 if templates_by_offset else 1
     generated_slots: list[dict[str, Any]] = []
 
     for day_idx in range(num_days):
         current_date = start_date + timedelta(days=day_idx)
         current_date_str = current_date.isoformat()
-        cycle_offset = day_idx % cycle_length
 
-        templates = templates_by_offset.get(cycle_offset, [])
-        for tmpl in templates:
+        for v_id, templates in templates_by_village.items():
+            tmpl = templates[day_idx % len(templates)]
             orig_slot_id = tmpl.get("slot_id", "slot")
             slot_id = f"{orig_slot_id}-{current_date.strftime('%Y%m%d')}"
             item = {
-                "village_id": str(tmpl["village_id"]),
+                "village_id": v_id,
                 "date": current_date_str,
                 "slot_id": slot_id,
                 "machine_type": str(tmpl["machine_type"]),
@@ -284,7 +285,7 @@ def run_seed(
     if start_date_str:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     else:
-        start_date = datetime.now(timezone.utc).date()
+        start_date = today_ist()
     print(f"Generating MachineSlots from: {start_date} to {start_date + timedelta(days=days - 1)}")
 
     # 2. Read seed data files
@@ -425,7 +426,7 @@ def main() -> None:
         default=os.environ.get("VILLAGES_TABLE"),
         help="Optional dedicated DynamoDB Villages table name",
     )
-    parser.add_argument("--days", type=int, default=14, help="Days forward to generate MachineSlots (default: 14)")
+    parser.add_argument("--days", type=int, default=21, help="Days forward to generate MachineSlots (default: 21, today through +20 days)")
     parser.add_argument("--start-date", default=None, help="Start date YYYY-MM-DD for MachineSlots (default: today)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and validate without writing to DynamoDB")
 

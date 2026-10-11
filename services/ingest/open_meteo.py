@@ -106,48 +106,46 @@ def get_seed_locations() -> list[dict[str, Any]]:
             wards_file = w_path
             break
 
-    # 1. Punjab villages
+    # 1. Villages (all in data/seed)
     if villages_file and villages_file.exists():
         try:
             with open(villages_file, "r", encoding="utf-8") as f:
                 villages = json.load(f)
                 for v in villages:
-                    if v.get("state", "").lower() == "punjab":
-                        locations.append({
-                            "id": v["village_id"],
-                            "name": v["name"],
-                            "district": v.get("district", ""),
-                            "state": v.get("state", "Punjab"),
-                            "lat": float(v["lat"]),
-                            "lng": float(v["lng"]),
-                            "type": "village",
-                        })
+                    locations.append({
+                        "id": v["village_id"],
+                        "name": v["name"],
+                        "district": v.get("district", ""),
+                        "state": v.get("state", "Punjab"),
+                        "lat": float(v["lat"]),
+                        "lng": float(v["lng"]),
+                        "type": "village",
+                    })
         except Exception as exc:
             logger.warning("Could not parse villages.json: %s. Using default list.", exc)
 
-    if not any(loc.get("state") == "Punjab" for loc in locations):
+    if not any(loc.get("type") == "village" for loc in locations):
         locations.extend([dict(loc, type="village") for loc in DEFAULT_PUNJAB_LOCATIONS])
 
-    # 2. Delhi wards
+    # 2. Wards (all in data/seed)
     if wards_file and wards_file.exists():
         try:
             with open(wards_file, "r", encoding="utf-8") as f:
                 wards = json.load(f)
                 for w in wards:
-                    if w.get("city", "").lower() == "delhi":
-                        locations.append({
-                            "id": w["ward_id"],
-                            "name": w["name"],
-                            "district": w.get("zone", ""),
-                            "city": w.get("city", "Delhi"),
-                            "lat": float(w["lat"]),
-                            "lng": float(w["lng"]),
-                            "type": "ward",
-                        })
+                    locations.append({
+                        "id": w["ward_id"],
+                        "name": w["name"],
+                        "district": w.get("zone", ""),
+                        "city": w.get("city", "Delhi"),
+                        "lat": float(w["lat"]),
+                        "lng": float(w["lng"]),
+                        "type": "ward",
+                    })
         except Exception as exc:
             logger.warning("Could not parse wards.json: %s. Using default list.", exc)
 
-    if not any(loc.get("city") == "Delhi" for loc in locations):
+    if not any(loc.get("type") == "ward" for loc in locations):
         locations.extend([dict(loc, type="ward") for loc in DEFAULT_DELHI_LOCATIONS])
 
     return locations
@@ -215,6 +213,14 @@ def fetch_forecast_and_wind(
     params = {
         "latitude": f"{lat:.4f}",
         "longitude": f"{lng:.4f}",
+        "current": (
+            "temperature_2m,"
+            "apparent_temperature,"
+            "relative_humidity_2m,"
+            "weather_code,"
+            "wind_speed_10m,"
+            "wind_direction_10m"
+        ),
         "daily": (
             "weather_code,"
             "temperature_2m_max,"
@@ -222,8 +228,11 @@ def fetch_forecast_and_wind(
             "precipitation_sum,"
             "precipitation_probability_max,"
             "wind_speed_10m_max,"
-            "wind_direction_10m_dominant"
+            "wind_direction_10m_dominant,"
+            "uv_index_max,"
+            "sunset"
         ),
+        "hourly": "visibility",
         "forecast_days": "7",
         "timezone": "Asia/Kolkata",
     }
@@ -244,6 +253,8 @@ def parse_weather_response(location: dict[str, Any], api_data: dict[str, Any]) -
     precip_prob = daily.get("precipitation_probability_max", [])
     wind_speeds = daily.get("wind_speed_10m_max", [])
     wind_dirs = daily.get("wind_direction_10m_dominant", [])
+    uv_max = daily.get("uv_index_max", [])
+    sunsets = daily.get("sunset", [])
 
     region_name = location.get("state") or location.get("city", "")
 
@@ -251,12 +262,19 @@ def parse_weather_response(location: dict[str, Any], api_data: dict[str, Any]) -
     for i, date_str in enumerate(times):
         w_code = weather_codes[i] if i < len(weather_codes) else None
         w_dir = wind_dirs[i] if i < len(wind_dirs) else None
+        p_prob = float(precip_prob[i]) if i < len(precip_prob) and precip_prob[i] is not None else 0.0
+        uv_val = float(uv_max[i]) if i < len(uv_max) and uv_max[i] is not None else 0.0
+        sunset_val = sunsets[i] if i < len(sunsets) else None
+
         forecast_list.append({
             "date": date_str,
             "temp_max_c": float(temp_max[i]) if i < len(temp_max) and temp_max[i] is not None else 0.0,
             "temp_min_c": float(temp_min[i]) if i < len(temp_min) and temp_min[i] is not None else 0.0,
             "precipitation_sum_mm": float(precip_sum[i]) if i < len(precip_sum) and precip_sum[i] is not None else 0.0,
-            "rain_prob_pct": float(precip_prob[i]) if i < len(precip_prob) and precip_prob[i] is not None else 0.0,
+            "rain_prob_pct": p_prob,
+            "precipitation_probability_max": p_prob,
+            "uv_index_max": uv_val,
+            "sunset": sunset_val,
             "wind_speed_kmh": float(wind_speeds[i]) if i < len(wind_speeds) and wind_speeds[i] is not None else 0.0,
             "wind_direction_deg": int(w_dir) if w_dir is not None else 0,
             "carries_toward_city": is_wind_carrying_toward_delhi(w_dir, region_name),
@@ -265,6 +283,25 @@ def parse_weather_response(location: dict[str, Any], api_data: dict[str, Any]) -
         })
 
     today_forecast = forecast_list[0] if forecast_list else {}
+
+    raw_curr = api_data.get("current", {})
+    curr_weather_code = int(raw_curr.get("weather_code", today_forecast.get("weather_code", 0)))
+    curr_speed = float(raw_curr.get("wind_speed_10m", today_forecast.get("wind_speed_kmh", 0.0)))
+    curr_dir = int(raw_curr.get("wind_direction_10m", today_forecast.get("wind_direction_deg", 0)))
+
+    current_data = {
+        "temperature_c": float(raw_curr.get("temperature_2m", today_forecast.get("temp_max_c", 0.0))),
+        "apparent_temperature_c": float(raw_curr.get("apparent_temperature", raw_curr.get("temperature_2m", today_forecast.get("temp_max_c", 0.0)))),
+        "relative_humidity_pct": int(raw_curr.get("relative_humidity_2m", 0)),
+        "weather_code": curr_weather_code,
+        "wind_speed_kmh": curr_speed,
+        "wind_direction_deg": curr_dir,
+        "condition": map_wmo_code_to_condition(curr_weather_code),
+    }
+
+    hourly_data = {}
+    if "hourly" in api_data and "visibility" in api_data["hourly"]:
+        hourly_data["visibility"] = api_data["hourly"]["visibility"]
 
     return {
         "id": location.get("id"),
@@ -276,9 +313,11 @@ def parse_weather_response(location: dict[str, Any], api_data: dict[str, Any]) -
         "type": location.get("type", "village"),
         "forecast_days": len(forecast_list),
         "forecast": forecast_list,
+        "current": current_data,
+        "hourly": hourly_data,
         "wind_summary": {
-            "current_speed_kmh": today_forecast.get("wind_speed_kmh", 0.0),
-            "current_direction_deg": today_forecast.get("wind_direction_deg", 0),
+            "current_speed_kmh": curr_speed,
+            "current_direction_deg": curr_dir,
             "carries_toward_city": today_forecast.get("carries_toward_city", False),
         },
         "elevation": api_data.get("elevation", 0.0),

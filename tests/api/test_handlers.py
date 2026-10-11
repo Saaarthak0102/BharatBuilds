@@ -71,17 +71,69 @@ class TestFarmerPlanEndpoint:
         body = json.loads(result["body"])
         assert "data" in body
         data = body["data"]
-        from datetime import datetime, timezone
-        expected_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        from services.api.common.time import today_ist
+        expected_date = today_ist().strftime("%Y-%m-%d")
         assert data["best_day"] == expected_date
         assert data["score"] == 50
         assert data["is_sample"] is True
         assert "score_breakdown" in data
         assert "tool_trace" in data
         assert "seven_day_scores" in data
+        assert "window_start" in data
+        assert "window_end" in data
+        assert "sowing_window_status" in data
         # Validate schema parity with Pydantic PlanResult model
         plan_model = PlanResult.model_validate(data)
         assert plan_model.score == 50
+
+    def test_plan_caches_result_and_bypasses_with_force(self, moto_dynamodb):
+        """Plan handler caches result in DataCache and bypasses when force=true."""
+        from services.api.handlers.farmer_plan import handler
+        import boto3
+        from api.common.config import config
+        from services.api.common.time import today_ist
+
+        event = build_event(
+            "POST",
+            "/v1/farmer/plan",
+            body={"village_id": "village-patiala-001", "crop_stage": "harvested", "language": "en"},
+            role="farmer",
+            sub="cache-user-1",
+        )
+        # First call: populates cache
+        res1 = handler(event, None)
+        assert res1["statusCode"] == 200
+        data1 = json.loads(res1["body"])["data"]
+
+        # Directly check DataCache item
+        dynamodb = boto3.resource("dynamodb", region_name="ap-south-1")
+        table = dynamodb.Table(config.DATA_CACHE_TABLE)
+        ist_date_str = today_ist().strftime("%Y-%m-%d")
+        cache_key = f"cache-user-1|village-patiala-001|harvested|en|{ist_date_str}"
+        cached_item = table.get_item(Key={"source": "plan", "key": cache_key}).get("Item")
+        assert cached_item is not None
+        assert cached_item["payload"]["best_day"] == data1["best_day"]
+
+        # Call again without force: served from cache
+        res2 = handler(event, None)
+        assert res2["statusCode"] == 200
+        data2 = json.loads(res2["body"])["data"]
+        assert data2["generated_at"] == data1["generated_at"]
+
+        # Call with force=true query param: re-executed
+        event_force = build_event(
+            "POST",
+            "/v1/farmer/plan",
+            query={"force": "true"},
+            body={"village_id": "village-patiala-001", "crop_stage": "harvested", "language": "en"},
+            role="farmer",
+            sub="cache-user-1",
+        )
+        res3 = handler(event_force, None)
+        assert res3["statusCode"] == 200
+        data3 = json.loads(res3["body"])["data"]
+        assert "generated_at" in data3
+
 
     def test_plan_non_farmer_access(self):
         """Should return 403 Forbidden when a non-farmer caller requests a plan."""

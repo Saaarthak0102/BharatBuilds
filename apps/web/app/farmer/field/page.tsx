@@ -198,6 +198,26 @@ export default function FarmerFieldPlanner() {
                     {planResult.is_sample && <SampleDataBadge />}
                   </div>
                   
+                  {planResult.sowing_window_status && planResult.sowing_window_status !== 'inside' && (
+                    <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-start gap-2">
+                      <LuInfo className="w-5 h-5 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Notice: Outside Recommended Sowing Window. </strong>
+                        Current sowing status is <em>{planResult.sowing_window_status}</em>. Recommended window for this crop stage: {planResult.window_start} to {planResult.window_end}.
+                      </div>
+                    </div>
+                  )}
+
+                  {planResult.no_ideal_day && (
+                    <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start gap-2">
+                      <LuInfo className="w-5 h-5 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>No Ideal Clearing Day Found: </strong>
+                        Forecast conditions for the 7-day window ({planResult.window_start} to {planResult.window_end}) do not meet optimal criteria (score: {planResult.score}/100). The day shown is the best available option.
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-end gap-4 mb-6 flex-wrap">
                     <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)]">
                       {formatKolkataDate(planResult.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}

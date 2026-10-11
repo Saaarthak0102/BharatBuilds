@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 import boto3
 import pydantic
 
+from api.common.time import now_ist
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError, NotFoundError
 from api.common.auth import require_auth, get_user_claims
@@ -132,7 +133,7 @@ def _create_profile(event, context):
         table = _get_users_table()
         existing_res = table.get_item(Key={"user_id": user_id})
         existing_item = existing_res.get("Item")
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = now_ist().isoformat()
 
         if existing_item:
             created_at = existing_item.get("created_at", now_iso)

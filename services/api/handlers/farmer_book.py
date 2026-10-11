@@ -2,12 +2,13 @@ import os
 import json
 import uuid
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
+from api.common.time import now_ist
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError, ApiError
 from api.common.auth import require_role
@@ -60,6 +61,20 @@ def _handle_post(event, context):
         booking_id = f"book-{booking_hash}"
         
         bookings_table = get_dynamodb_resource().Table(os.environ.get("BOOKINGS_TABLE", config.BOOKINGS_TABLE))
+        users_table = get_dynamodb_resource().Table(os.environ.get("USERS_TABLE", config.USERS_TABLE))
+        
+        acres = None
+        try:
+            user_profile = users_table.get_item(Key={'user_id': user_id}).get('Item')
+            if user_profile:
+                raw_acres = user_profile.get('land_size_acres')
+                if raw_acres is None:
+                    raw_acres = user_profile.get('land_size')
+                if raw_acres is not None:
+                    acres = float(raw_acres)
+        except Exception as e:
+            logger.warning("fetch_user_profile_acres_failed", error=str(e), correlation_id=correlation_id)
+
         try:
             existing = bookings_table.get_item(
                 Key={'user_id': user_id, 'booking_id': booking_id}
@@ -68,6 +83,19 @@ def _handle_post(event, context):
                 return success_response(existing['Item'], correlation_id=correlation_id)
         except Exception as e:
             logger.error("check_booking_failed", error=str(e), correlation_id=correlation_id)
+
+        booking_put_item = {
+            'user_id': {'S': user_id},
+            'booking_id': {'S': booking_id},
+            'village_id': {'S': village_id},
+            'date': {'S': date},
+            'idempotency_key': {'S': idempotency_key},
+            'status': {'S': 'PENDING'},
+            'created_at': {'S': now_ist().isoformat()},
+            'is_sample': {'BOOL': True}
+        }
+        if acres is not None:
+            booking_put_item['acres'] = {'N': str(acres)}
 
         try:
             get_dynamodb_client().transact_write_items(
@@ -90,16 +118,7 @@ def _handle_post(event, context):
                     {
                         'Put': {
                             'TableName': os.environ.get('BOOKINGS_TABLE', config.BOOKINGS_TABLE),
-                            'Item': {
-                                'user_id': {'S': user_id},
-                                'booking_id': {'S': booking_id},
-                                'village_id': {'S': village_id},
-                                'date': {'S': date},
-                                'idempotency_key': {'S': idempotency_key},
-                                'status': {'S': 'PENDING'},
-                                'created_at': {'S': datetime.now(timezone.utc).isoformat()},
-                                'is_sample': {'BOOL': True}
-                            },
+                            'Item': booking_put_item,
                             'ConditionExpression': 'attribute_not_exists(booking_id)'
                         }
                     }
@@ -120,8 +139,10 @@ def _handle_post(event, context):
             "idempotency_key": idempotency_key,
             "status": "PENDING",
             "is_sample": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": now_ist().isoformat()
         }
+        if acres is not None:
+            result["acres"] = acres
         return success_response(result, status_code=201, correlation_id=correlation_id)
 
     except ValidationError as e:

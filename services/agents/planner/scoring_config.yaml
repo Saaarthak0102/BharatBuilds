@@ -1,3 +1,18 @@
+min_ideal_score: 60
+
+sowing_windows:
+  source: "TO_VERIFY"
+  stages:
+    harvested:
+      start: "10-01"
+      end: "11-15"
+    partially_cleared:
+      start: "10-10"
+      end: "11-20"
+    standing:
+      start: "10-20"
+      end: "11-30"
+
 rules:
   sowing_window:
     bonus_inside: 25

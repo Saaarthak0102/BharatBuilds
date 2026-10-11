@@ -1,12 +1,67 @@
 import os
 import yaml
-from datetime import datetime
+from datetime import datetime, date
 
 def load_scoring_config() -> dict:
     """Load scoring weights from YAML config."""
     config_path = os.path.join(os.path.dirname(__file__), "scoring_config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
+
+def get_sowing_window_for_stage(
+    crop_stage: str,
+    as_of: date | None = None,
+    config: dict | None = None,
+    req_window: dict | None = None,
+) -> tuple[str, str, str]:
+    """
+    Returns (window_start_iso, window_end_iso, sowing_window_status).
+    sowing_window_status is one of: 'inside', 'before', 'after'.
+    Sowing windows go in scoring_config.yaml as month/day ranges per crop stage (no year),
+    rolling to next year if past.
+    """
+    if config is None:
+        config = load_scoring_config()
+
+    from api.common.time import today_ist
+    ref_date = as_of or today_ist()
+
+    stages = config.get("sowing_windows", {}).get("stages", {})
+    stage_info = stages.get(crop_stage, {"start": "10-01", "end": "11-15"})
+    start_md = stage_info.get("start", "10-01")
+    end_md = stage_info.get("end", "11-15")
+
+    sm, sd = map(int, start_md.split("-"))
+    em, ed = map(int, end_md.split("-"))
+
+    cur_year = ref_date.year
+    start_dt = date(cur_year, sm, sd)
+    end_dt = date(cur_year, em, ed)
+
+    # Check if window for current year is in the past
+    # "rolling to next year if past"
+    if ref_date > end_dt:
+        if (ref_date - end_dt).days <= 45:
+            status = "after"
+            return start_dt.isoformat(), end_dt.isoformat(), status
+        else:
+            start_dt = date(cur_year + 1, sm, sd)
+            end_dt = date(cur_year + 1, em, ed)
+
+    check_start = req_window.get("start", ref_date.isoformat()) if req_window else ref_date.isoformat()
+    check_end = req_window.get("end", ref_date.isoformat()) if req_window else ref_date.isoformat()
+
+    sw_start_str = start_dt.isoformat()
+    sw_end_str = end_dt.isoformat()
+
+    if check_end < sw_start_str:
+        status = "before"
+    elif check_start > sw_end_str:
+        status = "after"
+    else:
+        status = "inside"
+
+    return sw_start_str, sw_end_str, status
 
 def score_days(
     forecast_7d: list[dict],

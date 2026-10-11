@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError
 from datetime import datetime, timezone
 from api.common.config import config
 from api.common.errors import RateLimitError
+from api.common.time import today_ist
 
 def check_rate_limit(user_id: str, action: str = "default") -> None:
     """
@@ -12,7 +13,7 @@ def check_rate_limit(user_id: str, action: str = "default") -> None:
     dynamodb = boto3.resource("dynamodb")
     table = dynamodb.Table(config.DATA_CACHE_TABLE)
     
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = today_ist().isoformat()
     
     user_key = f"ratelimit#user#{user_id}#{action}#{today}"
     global_key = f"ratelimit#global#{action}#{today}"

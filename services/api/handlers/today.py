@@ -4,9 +4,10 @@ Returns AQI, advice, and freshness data for a citizen's area.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 import boto3
 
+from api.common.time import now_ist
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError
 from api.common.auth import require_role
@@ -76,7 +77,7 @@ def handler(event, context):
             # Seeded/Sample Scenario
             aqi_val = 185
             is_sample = True
-            fetched_at = datetime.now(timezone.utc).isoformat()
+            fetched_at = now_ist().isoformat()
             trend_24h = [
                 {"hour": "00:00", "aqi": 160},
                 {"hour": "03:00", "aqi": 155},
@@ -90,7 +91,7 @@ def handler(event, context):
         else:
             data = aqi_item.get("data", {})
             aqi_val = data.get("aqi", 0)
-            fetched_at = aqi_item.get("updated_at") or aqi_item.get("created_at") or datetime.now(timezone.utc).isoformat()
+            fetched_at = aqi_item.get("updated_at") or aqi_item.get("created_at") or now_ist().isoformat()
             trend_24h = data.get("trend_24h", [])
             
         category = get_aqi_category(aqi_val)

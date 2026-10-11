@@ -101,3 +101,21 @@ def test_all_days_outside_window(base_config):
     for day in scored:
         assert day["breakdown"]["sowing_window"] == 0
         assert day["score"] <= 50 # Hard cap if outside window
+
+def test_get_sowing_window_for_stage():
+    from services.agents.planner.scoring import get_sowing_window_for_stage
+    from datetime import date
+
+    # Test current date within window
+    ref_date = date(2026, 10, 15)
+    win = get_sowing_window_for_stage("harvested", ref_date)
+    assert win["start"] == "2026-10-01"
+    assert win["end"] == "2026-11-15"
+    assert win["source"] == "TO_VERIFY"
+
+    # Test rolling to next year if reference date is past window
+    ref_past = date(2026, 12, 1)
+    win_rolled = get_sowing_window_for_stage("harvested", ref_past)
+    assert win_rolled["start"] == "2027-10-01"
+    assert win_rolled["end"] == "2027-11-15"
+

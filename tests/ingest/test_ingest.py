@@ -115,15 +115,15 @@ class TestOpenMeteo:
     """Tests for services/ingest/open_meteo.py."""
 
     def test_seed_locations_contain_punjab_and_delhi(self):
-        """Coordinates for Punjab villages and Delhi wards are properly loaded."""
+        """Coordinates for all 15 villages and wards in data/seed are properly loaded."""
         locations = open_meteo.get_seed_locations()
-        assert len(locations) >= 11
+        assert len(locations) == 15
 
-        punjab_locs = [loc for loc in locations if loc.get("state") == "Punjab"]
-        delhi_locs = [loc for loc in locations if loc.get("city") == "Delhi"]
+        villages = [loc for loc in locations if loc.get("type") == "village"]
+        wards = [loc for loc in locations if loc.get("type") == "ward"]
 
-        assert len(punjab_locs) == 6
-        assert len(delhi_locs) == 5
+        assert len(villages) == 8
+        assert len(wards) == 7
 
         # Check required fields
         for loc in locations:
@@ -162,6 +162,17 @@ class TestOpenMeteo:
         mock_raw = {
             "elevation": 218.0,
             "timezone": "Asia/Kolkata",
+            "current": {
+                "temperature_2m": 31.5,
+                "apparent_temperature": 33.0,
+                "relative_humidity_2m": 55,
+                "weather_code": 0,
+                "wind_speed_10m": 12.0,
+                "wind_direction_10m": 290,
+            },
+            "hourly": {
+                "visibility": [10000.0] * 24,
+            },
             "daily": {
                 "time": [f"2026-10-{i:02d}" for i in range(1, 8)],
                 "weather_code": [0, 1, 2, 3, 45, 61, 95],
@@ -171,6 +182,8 @@ class TestOpenMeteo:
                 "precipitation_probability_max": [0, 5, 10, 30, 10, 80, 70],
                 "wind_speed_10m_max": [12.0, 14.0, 15.0, 10.0, 8.0, 18.0, 20.0],
                 "wind_direction_10m_dominant": [290, 285, 300, 270, 180, 295, 310],
+                "uv_index_max": [7.5, 7.2, 6.8, 6.5, 6.0, 4.5, 5.0],
+                "sunset": [f"2026-10-{i:02d}T18:00" for i in range(1, 8)],
             },
         }
         loc = {
@@ -192,10 +205,26 @@ class TestOpenMeteo:
         assert day0["temp_max_c"] == 35.0
         assert day0["condition"] == "clear"
         assert day0["carries_toward_city"] is True
+        assert day0["uv_index_max"] == 7.5
+        assert day0["sunset"] == "2026-10-01T18:00"
+        assert day0["precipitation_probability_max"] == 0.0
 
         day4 = parsed["forecast"][4]
         assert day4["condition"] == "fog"
         assert day4["carries_toward_city"] is False  # 180 deg
+
+        # Check current weather parsed
+        assert "current" in parsed
+        assert parsed["current"]["temperature_c"] == 31.5
+        assert parsed["current"]["apparent_temperature_c"] == 33.0
+        assert parsed["current"]["relative_humidity_pct"] == 55
+        assert parsed["current"]["weather_code"] == 0
+        assert parsed["current"]["wind_speed_kmh"] == 12.0
+        assert parsed["current"]["wind_direction_deg"] == 290
+
+        # Check hourly visibility parsed
+        assert "hourly" in parsed
+        assert parsed["hourly"]["visibility"] == [10000.0] * 24
 
 
 class TestInterfaceParity:

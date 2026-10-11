@@ -15,6 +15,7 @@ import pygeohash as pgh
 import os
 from botocore.exceptions import ClientError
 
+from api.common.time import today_ist, now_ist
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError, ApiError
 from api.common.auth import require_auth, get_claims
@@ -47,7 +48,7 @@ def handler(event, context):
 def _check_rate_limit(user_id: str):
     # Very simple mock ratelimit via DynamoDB scan or query - using DataCache for counting
     cache = _get_table(config.DATA_CACHE_TABLE)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = today_ist().isoformat()
     key = f"{user_id}#{today}"
     
     try:
@@ -120,7 +121,7 @@ def _submit_report(event, context):
             "lng": str(lng),
             "photo_key": photo_key,
             "notes": notes, # NEVER placed in prompt
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": now_ist().isoformat(),
             "ttl": int(time.time()) + (30 * 24 * 60 * 60)
         }
         if confidence is not None:

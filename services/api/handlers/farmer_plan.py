@@ -53,6 +53,7 @@ def handler(event, context):
         language = body.get("language", "en")
         start_date = body.get("start_date")
         end_date = body.get("end_date")
+        force = body.get("force") in (True, "true", "True") or ((event.get("queryStringParameters") or {}).get("force") in (True, "true", "True"))
 
         if not village_id or not crop_stage:
             raise ValidationError("village_id and crop_stage are required")
@@ -64,9 +65,20 @@ def handler(event, context):
         if crop_stage not in ("harvested", "partially_cleared", "standing"):
             raise ValidationError("crop_stage must be one of: harvested, partially_cleared, standing")
 
+        from api.common.time import today_ist
+        from ingest import cache
+
+        user_id = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}).get("sub", "anonymous")
+        cache_key = f"{user_id}|{village_id}|{crop_stage}|{language}|{today_ist().isoformat()}"
+
+        if not force:
+            cached_plan = cache.get_cached("plan", cache_key, allow_expired=False)
+            if cached_plan and cached_plan.get("payload"):
+                logger.info("farmer_plan_cache_hit", key=cache_key, correlation_id=correlation_id)
+                return success_response(cached_plan["payload"], correlation_id=correlation_id)
+
         # Rate limiting (e.g., max 5 requests per minute)
         from api.common.ratelimit import check_rate_limit
-        user_id = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}).get("sub", "anonymous")
         check_rate_limit(user_id, action="plan")
         
         from agents.planner.agent import run_planner
@@ -79,6 +91,12 @@ def handler(event, context):
         from agents.common.runner import write_agent_run
         run_id = str(uuid.uuid4())
         write_agent_run(run_id, result.get("tool_trace", []), latency, outcome)
+
+        # Cache result in DataCache with 6h TTL
+        try:
+            cache.cache_to_dynamo("plan", cache_key, result, ttl_hours=6)
+        except Exception as e:
+            logger.warning("cache_plan_failed", error=str(e), key=cache_key)
         
         return success_response(result, correlation_id=correlation_id)
         
