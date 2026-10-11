@@ -54,8 +54,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { DemoStatus } from "@/components/common/DemoStatus";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -65,7 +63,6 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakarta.variable} ${instrumentSerif.variable} ${notoSansDevanagari.variable} ${notoSansGurmukhi.variable}`} data-accent="blue">
       <body className="min-h-screen flex flex-col text-white font-sans antialiased overflow-x-hidden">
         {children}
-        <DemoStatus />
       </body>
     </html>
   );
