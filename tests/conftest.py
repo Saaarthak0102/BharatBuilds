@@ -40,6 +40,8 @@ TABLE_DEFINITIONS = [
         "attribute_definitions": [
             {"AttributeName": "report_id", "AttributeType": "S"},
             {"AttributeName": "geohash", "AttributeType": "S"},
+            {"AttributeName": "user_id", "AttributeType": "S"},
+            {"AttributeName": "created_at", "AttributeType": "S"},
         ],
         "global_secondary_indexes": [
             {
@@ -48,7 +50,15 @@ TABLE_DEFINITIONS = [
                     {"AttributeName": "geohash", "KeyType": "HASH"},
                 ],
                 "Projection": {"ProjectionType": "ALL"},
-            }
+            },
+            {
+                "IndexName": "user_id-created_at-index",
+                "KeySchema": [
+                    {"AttributeName": "user_id", "KeyType": "HASH"},
+                    {"AttributeName": "created_at", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            },
         ],
     },
     {

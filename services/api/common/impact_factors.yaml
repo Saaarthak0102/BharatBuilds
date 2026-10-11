@@ -1,0 +1,27 @@
+# Impact and emissions calculation factors for stubble burning avoidance
+# Every factor is tagged with source: "TO_VERIFY"
+
+factors:
+  tonnes_straw_per_acre:
+    value: 2.2
+    unit: "tonnes/acre"
+    source: "TO_VERIFY"
+    description: "Estimated tonnes of paddy residue generated per acre"
+
+  pm25_kg_per_tonne_straw:
+    value: 6.5
+    unit: "kg/tonne"
+    source: "TO_VERIFY"
+    description: "Estimated kg of PM2.5 emitted per tonne of open-burned straw"
+
+  co2_kg_per_tonne_straw:
+    value: 1460.0
+    unit: "kg/tonne"
+    source: "TO_VERIFY"
+    description: "Estimated kg of CO2 equivalent emitted per tonne of open-burned straw"
+
+  financial_incentive_inr_per_acre:
+    value: 1000.0
+    unit: "INR/acre"
+    source: "TO_VERIFY"
+    description: "Estimated CRM subsidy / incentive per cleared acre"

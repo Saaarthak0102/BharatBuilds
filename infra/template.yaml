@@ -140,6 +140,10 @@ Resources:
           AttributeType: S
         - AttributeName: geohash
           AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
       KeySchema:
         - AttributeName: report_id
           KeyType: HASH
@@ -148,6 +152,14 @@ Resources:
           KeySchema:
             - AttributeName: geohash
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user_id-created_at-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       TimeToLiveSpecification:
@@ -491,6 +503,23 @@ Resources:
             Path: /v1/today
             Method: GET
 
+  WeatherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-weather-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.weather.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataCacheTable
+      Events:
+        GetWeather:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/weather
+            Method: GET
+
   AskFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -776,4 +805,7 @@ Outputs:
   SlotRefreshFunction:
     Description: Lambda function ARN for machine slot refresh
     Value: !GetAtt SlotRefreshFunction.Arn
+  WeatherFunction:
+    Description: Lambda function ARN for weather endpoint
+    Value: !GetAtt WeatherFunction.Arn
 

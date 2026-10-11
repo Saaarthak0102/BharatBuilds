@@ -156,18 +156,67 @@ def _handle_get(event, context):
     correlation_id = str(uuid.uuid4())
     logger.info("farmer_bookings_get_request", correlation_id=correlation_id)
     try:
+        from api.common.impact import calculate_farmer_impact
+
         authorizer = event.get("requestContext", {}).get("authorizer", {})
         claims = authorizer.get("claims", {})
         user_id = claims.get("sub", "unknown-user")
 
         bookings_table = get_dynamodb_resource().Table(os.environ.get("BOOKINGS_TABLE", config.BOOKINGS_TABLE))
+        users_table = get_dynamodb_resource().Table(os.environ.get("USERS_TABLE", config.USERS_TABLE))
+
+        # Lookup farmer's default acres from profile if needed
+        default_acres = 0.0
+        try:
+            user_profile = users_table.get_item(Key={'user_id': user_id}).get('Item')
+            if user_profile:
+                raw_acres = user_profile.get('land_size_acres')
+                if raw_acres is None:
+                    raw_acres = user_profile.get('land_size')
+                if raw_acres is not None:
+                    default_acres = float(raw_acres)
+        except Exception as e:
+            logger.warning("profile_lookup_warning", error=str(e), correlation_id=correlation_id)
+
         response = bookings_table.query(
             KeyConditionExpression=Key('user_id').eq(user_id),
             ScanIndexForward=False,
             Limit=20
         )
+        raw_items = response.get('Items', [])
         
-        return success_response({"bookings": response.get('Items', [])}, correlation_id=correlation_id)
+        status_counts = {"PENDING": 0, "CONFIRMED": 0, "COMPLETED": 0, "CANCELLED": 0}
+        total_non_cancelled_acres = 0.0
+        processed_bookings = []
+
+        for item in raw_items:
+            b = dict(item)
+            # Ensure acres field exists
+            if "acres" not in b or b["acres"] is None:
+                b["acres"] = default_acres
+            else:
+                try:
+                    b["acres"] = float(b["acres"])
+                except (ValueError, TypeError):
+                    b["acres"] = default_acres
+
+            st = str(b.get("status", "PENDING")).upper()
+            status_counts[st] = status_counts.get(st, 0) + 1
+            if st != "CANCELLED":
+                total_non_cancelled_acres += float(b["acres"] or 0.0)
+
+            processed_bookings.append(b)
+
+        impact_data = calculate_farmer_impact(total_non_cancelled_acres)
+
+        result = {
+            "bookings": processed_bookings,
+            "counts_by_status": status_counts,
+            "status_counts": status_counts,
+            "acres": total_non_cancelled_acres,
+            "impact": impact_data,
+        }
+        return success_response(result, correlation_id=correlation_id)
     except Exception as e:
         logger.error("unexpected_error", error=str(e), correlation_id=correlation_id)
         return error_response(500, "Internal server error", correlation_id=correlation_id)

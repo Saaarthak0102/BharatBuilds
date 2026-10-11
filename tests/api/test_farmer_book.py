@@ -129,7 +129,7 @@ class TestFarmerBookEndpoint:
         assert booking1["booking_id"] != booking2["booking_id"]
 
     def test_get_bookings(self):
-        """GET /v1/farmer/bookings returns only the caller's bookings."""
+        """GET /v1/farmer/bookings returns caller's bookings with counts by status and impact math."""
         from services.api.handlers.farmer_book import handler
         
         # User 1 books
@@ -144,6 +144,14 @@ class TestFarmerBookEndpoint:
         data1 = json.loads(res1["body"])["data"]
         assert len(data1["bookings"]) == 1
         assert data1["bookings"][0]["user_id"] == "user-1"
+        assert "acres" in data1["bookings"][0]
+        assert "counts_by_status" in data1
+        assert data1["counts_by_status"]["PENDING"] == 1
+        assert "impact" in data1
+        assert "tonnes_straw_diverted_est" in data1["impact"]
+        assert "pm25_kg_saved_est" in data1["impact"]
+        assert "co2_tonnes_saved_est" in data1["impact"]
+        assert data1["impact"]["source"] == "TO_VERIFY"
 
     def test_farmer_booking_populates_acres_from_users_table(self, moto_dynamodb):
         """Farmer booking reads caller land_size_acres from UsersTable and populates acres."""

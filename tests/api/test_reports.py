@@ -235,3 +235,56 @@ def test_get_report_by_id_another_user_gets_404(moto_dynamodb, mock_event):
     res_nonexistent = reports.handler(mock_event, None)
     assert res_nonexistent["statusCode"] == 404
 
+
+def test_get_reports_mine_true_queries_gsi(moto_dynamodb, mock_event):
+    dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
+    table = dynamodb.Table(config.REPORTS_TABLE)
+
+    # Put multiple reports for user123 and another user
+    table.put_item(Item={
+        "report_id": "rpt-user-1",
+        "user_id": "user123",
+        "status": "received",
+        "category": "crop_burning",
+        "created_at": "2026-10-10T10:00:00Z"
+    })
+    table.put_item(Item={
+        "report_id": "rpt-user-2",
+        "user_id": "user123",
+        "status": "resolved",
+        "category": "garbage_burning",
+        "created_at": "2026-10-11T12:00:00Z"
+    })
+    table.put_item(Item={
+        "report_id": "rpt-other",
+        "user_id": "other_person",
+        "status": "received",
+        "category": "construction_dust",
+        "created_at": "2026-10-11T13:00:00Z"
+    })
+
+    mock_event["httpMethod"] = "GET"
+    mock_event["body"] = ""
+    mock_event["pathParameters"] = None
+    mock_event["queryStringParameters"] = {"mine": "true"}
+    mock_event["requestContext"]["authorizer"]["claims"]["sub"] = "user123"
+
+    with mock.patch.object(table, "scan", side_effect=Exception("Scan should never be called when mine=true")):
+        with mock.patch.object(reports, "_get_table", return_value=table):
+            res = reports.handler(mock_event, None)
+
+    assert res["statusCode"] == 200
+    data = json.loads(res["body"])["data"]
+    
+    assert len(data["reports"]) == 2
+    # Newest first
+    assert data["reports"][0]["report_id"] == "rpt-user-2"
+    assert data["reports"][1]["report_id"] == "rpt-user-1"
+    
+    # Status counts
+    assert "status_counts" in data
+    assert data["status_counts"]["received"] == 1
+    assert data["status_counts"]["resolved"] == 1
+    assert data["status_counts"]["routed"] == 0
+
+

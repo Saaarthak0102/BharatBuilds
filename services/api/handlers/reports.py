@@ -204,8 +204,43 @@ def _get_reports(event, context):
     logger.info("get_reports_request", correlation_id=correlation_id)
 
     try:
-        # Scan for reports; if table does not exist or empty, fallback to sample reports
+        params = event.get("queryStringParameters") or {}
+        mine = (params.get("mine") or "").lower() in ("true", "1", "yes")
+
         table = _get_table(config.REPORTS_TABLE)
+
+        if mine:
+            user_id = get_claims(event).get("sub")
+            if not user_id:
+                raise ValidationError("Unauthorized")
+
+            # Query GSI user_id-created_at-index (never scan), newest first (ScanIndexForward=False), Limit=20
+            response = table.query(
+                IndexName="user_id-created_at-index",
+                KeyConditionExpression=Key("user_id").eq(user_id),
+                ScanIndexForward=False,
+                Limit=20
+            )
+            items = response.get("Items", [])
+
+            status_counts = {
+                "received": 0,
+                "routed": 0,
+                "investigating": 0,
+                "resolved": 0,
+                "rejected": 0,
+            }
+            for it in items:
+                st = str(it.get("status", "received")).lower()
+                status_counts[st] = status_counts.get(st, 0) + 1
+
+            return success_response({
+                "reports": items,
+                "status_counts": status_counts,
+                "is_sample": False
+            }, correlation_id=correlation_id)
+
+        # Non-mine request: scan for map reports; fallback to sample if empty
         response = table.scan()
         items = response.get("Items", [])
         
@@ -229,8 +264,10 @@ def _get_reports(event, context):
 
         return success_response({"reports": safe_reports, "is_sample": False}, correlation_id=correlation_id)
 
+    except ValidationError as e:
+        return error_response(400, str(e), correlation_id=correlation_id)
     except Exception as e:
-        logger.warning(f"Failed to scan reports table, falling back to sample data: {e}", correlation_id=correlation_id)
+        logger.warning(f"Failed to retrieve reports: {e}", correlation_id=correlation_id)
         return success_response({"reports": SAMPLE_REPORTS, "is_sample": True}, correlation_id=correlation_id)
 
 
