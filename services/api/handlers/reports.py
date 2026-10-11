@@ -8,7 +8,8 @@ DELETE /v1/reports/{id} - Delete a report
 import json
 import uuid
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 import boto3
 from boto3.dynamodb.conditions import Key
 import pygeohash as pgh
@@ -175,28 +176,37 @@ def _submit_report(event, context):
         return error_response(500, "Internal server error", correlation_id=correlation_id)
 
 
+def _load_sample_reports_fallback() -> list[dict]:
+    potential_roots = [
+        Path.cwd() / "data" / "seed" / "sample_reports.json",
+        Path(__file__).resolve().parents[3] / "data" / "seed" / "sample_reports.json",
+        Path("/var/task/data/seed/sample_reports.json"),
+    ]
+    for p in potential_roots:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return []
+
 SAMPLE_REPORTS = [
     {
-        "report_id": "rpt-001",
+        "report_id": "sample-report-001",
         "category": "crop_burning",
-        "status": "routed",
-        "location": {"lat": 28.65, "lng": 77.25},
-        "created_at": "2024-11-05T08:30:00Z",
-    },
-    {
-        "report_id": "rpt-002",
-        "category": "garbage_burning",
-        "status": "received",
-        "location": {"lat": 28.63, "lng": 77.22},
-        "created_at": "2024-11-05T10:15:00Z",
-    },
-    {
-        "report_id": "rpt-003",
-        "category": "construction_dust",
         "status": "resolved",
-        "location": {"lat": 28.68, "lng": 77.30},
-        "created_at": "2024-11-04T14:00:00Z",
-    },
+        "area_name": "Rajpura Fields",
+        "public_lat": 30.482,
+        "public_lng": 76.594,
+        "sample_age_hours": 42,
+        "confidence": 0.94,
+        "confidence_label": "High confidence",
+        "needs_review": False,
+        "merged_count": 3,
+        "sample_photo": "/sample-reports/r01.jpg",
+        "is_sample": True
+    }
 ]
 
 def _get_reports(event, context):
@@ -206,22 +216,31 @@ def _get_reports(event, context):
     try:
         params = event.get("queryStringParameters") or {}
         mine = (params.get("mine") or "").lower() in ("true", "1", "yes")
+        bbox = params.get("bbox")
+        category_filter = params.get("category")
+        try:
+            limit = min(max(int(params.get("limit", 20)), 1), 50)
+        except (ValueError, TypeError):
+            limit = 20
+
+        claims = get_claims(event)
+        current_user_id = claims.get("sub") if claims else None
 
         table = _get_table(config.REPORTS_TABLE)
 
         if mine:
-            user_id = get_claims(event).get("sub")
-            if not user_id:
+            if not current_user_id:
                 raise ValidationError("Unauthorized")
 
             # Query GSI user_id-created_at-index (never scan), newest first (ScanIndexForward=False), Limit=20
             response = table.query(
                 IndexName="user_id-created_at-index",
-                KeyConditionExpression=Key("user_id").eq(user_id),
+                KeyConditionExpression=Key("user_id").eq(current_user_id),
                 ScanIndexForward=False,
-                Limit=20
+                Limit=limit
             )
-            items = response.get("Items", [])
+            raw_items = response.get("Items", [])
+            items = [it for it in raw_items if not it.get("is_sample") and it.get("user_id") != "sample"]
 
             status_counts = {
                 "received": 0,
@@ -240,35 +259,101 @@ def _get_reports(event, context):
                 "is_sample": False
             }, correlation_id=correlation_id)
 
-        # Non-mine request: scan for map reports; fallback to sample if empty
-        response = table.scan()
-        items = response.get("Items", [])
-        
-        if not items:
-            return success_response({"reports": SAMPLE_REPORTS, "is_sample": True}, correlation_id=correlation_id)
+        # Non-mine request: scan for community reports
+        try:
+            response = table.scan(Limit=100)
+            items = response.get("Items", [])
+        except Exception as e:
+            logger.warning(f"Scan failed: {e}", correlation_id=correlation_id)
+            items = []
 
-        safe_reports = []
-        for item in items:
-            # Mask precision and remove private fields
-            g = item.get("geohash", "")
-            safe_geohash = g[:5] if len(g) >= 5 else g
-            lat, lng = pgh.decode(safe_geohash) if safe_geohash else (0.0, 0.0)
-            
-            safe_reports.append({
-                "report_id": item.get("report_id"),
-                "category": item.get("category"),
-                "status": item.get("status"),
-                "location": {"lat": lat, "lng": lng},
-                "created_at": item.get("created_at")
+        if not items:
+            items = _load_sample_reports_fallback()
+            if not items:
+                items = SAMPLE_REPORTS
+
+        now = now_ist()
+        sanitized_reports = []
+
+        parsed_bbox = None
+        if bbox:
+            try:
+                parts = [float(x.strip()) for x in bbox.split(",")]
+                if len(parts) == 4:
+                    parsed_bbox = parts  # [min_lng, min_lat, max_lng, max_lat]
+            except Exception:
+                pass
+
+        for it in items:
+            is_sample = bool(it.get("is_sample", False) or it.get("user_id") == "sample")
+
+            if is_sample:
+                try:
+                    age_h = float(it.get("sample_age_hours", 2))
+                except (ValueError, TypeError):
+                    age_h = 2.0
+                created_at = (now - timedelta(hours=age_h)).isoformat()
+                pub_lat = float(it.get("public_lat") or it.get("lat") or 0.0)
+                pub_lng = float(it.get("public_lng") or it.get("lng") or 0.0)
+                photo_url = it.get("sample_photo") or it.get("photo_url")
+            else:
+                g = it.get("geohash", "")
+                safe_geohash = g[:5] if len(g) >= 5 else g
+                lat, lng = pgh.decode(safe_geohash) if safe_geohash else (0.0, 0.0)
+                pub_lat = lat
+                pub_lng = lng
+                created_at = it.get("created_at") or now.isoformat()
+                photo_url = None
+
+            cat = it.get("category", "")
+            if category_filter and cat != category_filter:
+                continue
+
+            if parsed_bbox:
+                min_lng, min_lat, max_lng, max_lat = parsed_bbox
+                if not (min_lng <= pub_lng <= max_lng and min_lat <= pub_lat <= max_lat):
+                    continue
+
+            is_mine = bool(current_user_id and it.get("user_id") == current_user_id and not is_sample)
+
+            conf_label = it.get("confidence_label")
+            if not conf_label:
+                try:
+                    c_val = float(it.get("confidence", 0.85))
+                    conf_label = "High confidence" if c_val >= 0.85 else ("Moderate confidence" if c_val >= 0.70 else "Needs verification")
+                except Exception:
+                    conf_label = "High confidence"
+
+            sanitized_reports.append({
+                "report_id": it.get("report_id"),
+                "category": cat,
+                "status": str(it.get("status", "received")).lower(),
+                "area_name": it.get("area_name") or ("Local Area" if is_sample else f"Geohash {it.get('geohash', '')[:5]}"),
+                "public_lat": pub_lat,
+                "public_lng": pub_lng,
+                "created_at": created_at,
+                "confidence_label": conf_label,
+                "needs_review": bool(it.get("needs_review", False)),
+                "merged_count": int(it.get("merged_count", 1)),
+                "photo_url": photo_url,
+                "is_sample": is_sample,
+                "is_mine": is_mine,
             })
 
-        return success_response({"reports": safe_reports, "is_sample": False}, correlation_id=correlation_id)
+        sanitized_reports.sort(key=lambda x: x["created_at"], reverse=True)
+        final_reports = sanitized_reports[:limit]
+
+        return success_response({
+            "reports": final_reports,
+            "is_sample": any(r["is_sample"] for r in final_reports) if final_reports else True
+        }, correlation_id=correlation_id)
 
     except ValidationError as e:
         return error_response(400, str(e), correlation_id=correlation_id)
     except Exception as e:
         logger.warning(f"Failed to retrieve reports: {e}", correlation_id=correlation_id)
-        return success_response({"reports": SAMPLE_REPORTS, "is_sample": True}, correlation_id=correlation_id)
+        fallback = _load_sample_reports_fallback()
+        return success_response({"reports": fallback[:20], "is_sample": True}, correlation_id=correlation_id)
 
 
 def _get_report_by_id(event, context, report_id: str):

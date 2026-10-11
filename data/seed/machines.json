@@ -2,46 +2,100 @@
   {
     "slot_id": "slot-001",
     "village_id": "village-patiala-001",
-    "date": "2024-11-05",
+    "date": "2026-10-11",
     "machine_type": "Happy Seeder",
-    "owner_label": "Kisan Seva Kendra, Patiala",
+    "owner_label": "Kisan Seva Pool Patiala",
     "slots_free": 3,
     "is_sample": true
   },
   {
     "slot_id": "slot-002",
-    "village_id": "village-patiala-001",
-    "date": "2024-11-06",
-    "machine_type": "Super SMS (Straw Management System)",
-    "owner_label": "Punjab Agro, Rajpura",
-    "slots_free": 1,
+    "village_id": "village-patiala-002",
+    "date": "2026-10-11",
+    "machine_type": "Super SMS",
+    "owner_label": "Agri Tool Cooperative Nabha",
+    "slots_free": 2,
     "is_sample": true
   },
   {
     "slot_id": "slot-003",
     "village_id": "village-ludhiana-001",
-    "date": "2024-11-05",
+    "date": "2026-10-11",
     "machine_type": "Rotavator",
-    "owner_label": "FPO Ludhiana Cooperative",
-    "slots_free": 5,
+    "owner_label": "Khanna Farm Machinery Pool",
+    "slots_free": 4,
     "is_sample": true
   },
   {
     "slot_id": "slot-004",
-    "village_id": "village-ludhiana-001",
-    "date": "2024-11-07",
-    "machine_type": "Happy Seeder",
-    "owner_label": "Kisan Seva Kendra, Ludhiana",
+    "village_id": "village-ludhiana-002",
+    "date": "2026-10-11",
+    "machine_type": "Mulcher",
+    "owner_label": "Jagraon Kisan Hub",
     "slots_free": 2,
     "is_sample": true
   },
   {
     "slot_id": "slot-005",
     "village_id": "village-sangrur-001",
-    "date": "2024-11-06",
-    "machine_type": "Mulcher",
-    "owner_label": "Panchayat Equipment Pool, Sangrur",
-    "slots_free": 4,
+    "date": "2026-10-11",
+    "machine_type": "Baler",
+    "owner_label": "Sangrur Equipment Pool",
+    "slots_free": 3,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-006",
+    "village_id": "village-sangrur-002",
+    "date": "2026-10-11",
+    "machine_type": "Zero-till drill",
+    "owner_label": "Barnala Farm Service Center",
+    "slots_free": 3,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-007",
+    "village_id": "village-karnal-001",
+    "date": "2026-10-11",
+    "machine_type": "Happy Seeder",
+    "owner_label": "Karnal Community Machinery Pool",
+    "slots_free": 3,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-008",
+    "village_id": "village-karnal-002",
+    "date": "2026-10-11",
+    "machine_type": "Super SMS",
+    "owner_label": "Nilokheri Custom Hiring Center",
+    "slots_free": 2,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-009",
+    "village_id": "village-patiala-001",
+    "date": "2026-10-11",
+    "machine_type": "Rotavator",
+    "owner_label": "Panchayat Machinery Bank",
+    "slots_free": 2,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-010",
+    "village_id": "village-ludhiana-001",
+    "date": "2026-10-11",
+    "machine_type": "Baler",
+    "owner_label": "Ludhiana Regional Agro Pool",
+    "slots_free": 3,
+    "is_sample": true
+  },
+  {
+    "slot_id": "slot-011",
+    "village_id": "village-sangrur-001",
+    "date": "2026-10-11",
+    "machine_type": "Zero-till drill",
+    "owner_label": "Malerkotla Cooperative Bank",
+    "slots_free": 2,
     "is_sample": true
   }
 ]

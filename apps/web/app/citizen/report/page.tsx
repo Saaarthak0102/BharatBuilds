@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PillButton } from '@/components/ui/PillButton';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { CitizenBackHeader } from '@/components/citizen/CitizenBackHeader';
+import { ReportCard } from '@/components/citizen/ReportCard';
 import {
   getUploadUrl,
   uploadPhoto,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/api/client';
 import { wards, getWard } from '@/lib/data/reference';
 import { useT } from '@/lib/i18n/useT';
+import { CommunityReport } from '@/lib/types';
 import {
   LuCamera,
   LuMapPin,
@@ -717,151 +719,64 @@ export default function CitizenReportPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* STEP 3: STATUS TIMELINE & DETAILS                                    */}
+        {/* STEP 3: STATUS TIMELINE & DETAILS VIA REPORTCARD                     */}
         {/* ==================================================================== */}
         {currentStep === 3 && (
-          <GlassCard className="p-6 space-y-6 border border-[var(--emerald)]/20">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-xl font-serif italic text-[var(--text-hi)]">
-                  {t('citizen.statusTimelineTitle') || 'Report Status'}
-                </h2>
+          <div className="space-y-6">
+            <GlassCard className="p-6 space-y-6 border border-[var(--emerald)]/20">
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 className="text-xl font-serif italic text-[var(--text-hi)]">
+                    {t('citizen.statusTimelineTitle') || 'Report Submitted Successfully'}
+                  </h2>
+                  <p className="text-xs text-[var(--text-mid)]">
+                    Your report has been logged and dispatched to zonal field authorities.
+                  </p>
+                </div>
                 {reportId && (
-                  <span className="text-xs font-mono text-[var(--text-low)] bg-[var(--bg-2)] px-2 py-0.5 rounded">
-                    {reportId}
+                  <span className="text-xs font-mono text-[var(--text-low)] bg-[var(--bg-2)] px-2.5 py-1 rounded-full border border-[var(--border)]">
+                    #{reportId}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[var(--text-mid)]">
-                Incident reports are dispatched to local zonal field authorities.
-              </p>
-            </div>
 
-            {/* Needs Review Badge */}
-            {needsReview && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-400 flex items-center gap-2">
-                <LuClock className="w-4 h-4 shrink-0" />
-                <span>{t('citizen.awaitingReviewNotice') || 'Awaiting manual zonal review'}</span>
+              {/* ReportCard Component */}
+              <ReportCard
+                report={{
+                  report_id: reportId || 'submitted-report',
+                  category: selectedCategory,
+                  status: reportStatus,
+                  area_name: coords.wardName,
+                  public_lat: coords.lat,
+                  public_lng: coords.lng,
+                  created_at: new Date().toISOString(),
+                  confidence_label: confidenceText || 'High confidence',
+                  needs_review: needsReview,
+                  merged_count: 1,
+                  photo_url: photoPreview || undefined,
+                  is_sample: false,
+                  is_mine: true,
+                }}
+              />
+
+              {/* Actions: View on map & Back to Dashboard */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <Link
+                  href="/map"
+                  className="w-full sm:flex-1 py-3 px-4 rounded-full bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] text-sm font-semibold text-[var(--text-hi)] flex items-center justify-center gap-2 transition-colors"
+                >
+                  <LuMap className="w-4 h-4 text-[var(--accent)]" />
+                  <span>{t('citizen.viewOnMap') || 'View on Map'}</span>
+                </Link>
+                <Link
+                  href="/citizen"
+                  className="w-full sm:flex-1 py-3 px-4 rounded-full bg-[var(--accent)] hover:opacity-90 text-sm font-semibold text-[var(--bg-0)] flex items-center justify-center gap-2 transition-opacity"
+                >
+                  <span>{t('citizen.backToDashboard') || 'Back to Dashboard'}</span>
+                </Link>
               </div>
-            )}
-
-            {/* Status Timeline */}
-            <div className="py-4 px-2">
-              <div className="grid grid-cols-3 gap-2 relative">
-                {/* Connecting Line */}
-                <div className="absolute top-5 left-1/6 right-1/6 h-0.5 bg-[var(--border)] -z-0" />
-
-                {/* 1. Received */}
-                <div className="flex flex-col items-center text-center relative z-10 space-y-2">
-                  <div
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                      reportStatus === 'received' ||
-                      reportStatus === 'routed' ||
-                      reportStatus === 'resolved'
-                        ? 'bg-[var(--emerald)]/20 border-[var(--emerald)] text-[var(--emerald)]'
-                        : 'bg-[var(--bg-1)] border-[var(--border)] text-[var(--text-low)]'
-                    }`}
-                  >
-                    <LuCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[var(--text-hi)] block">
-                      {t('citizen.statusReceived') || 'Received'}
-                    </span>
-                    <span className="text-[10px] text-[var(--text-low)]">Logged</span>
-                  </div>
-                </div>
-
-                {/* 2. Routed */}
-                <div className="flex flex-col items-center text-center relative z-10 space-y-2">
-                  <div
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                      reportStatus === 'routed' || reportStatus === 'resolved'
-                        ? 'bg-[var(--emerald)]/20 border-[var(--emerald)] text-[var(--emerald)]'
-                        : reportStatus === 'received'
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-400 animate-pulse'
-                        : 'bg-[var(--bg-1)] border-[var(--border)] text-[var(--text-low)]'
-                    }`}
-                  >
-                    {reportStatus === 'routed' || reportStatus === 'resolved' ? (
-                      <LuCheck className="w-5 h-5" />
-                    ) : (
-                      <LuClock className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[var(--text-hi)] block">
-                      {t('citizen.statusRouted') || 'Routed'}
-                    </span>
-                    <span className="text-[10px] text-[var(--text-low)]">Assigned to team</span>
-                  </div>
-                </div>
-
-                {/* 3. Resolved */}
-                <div className="flex flex-col items-center text-center relative z-10 space-y-2">
-                  <div
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                      reportStatus === 'resolved'
-                        ? 'bg-[var(--emerald)]/20 border-[var(--emerald)] text-[var(--emerald)]'
-                        : 'bg-[var(--bg-1)] border-[var(--border)] text-[var(--text-low)]'
-                    }`}
-                  >
-                    <LuCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[var(--text-hi)] block">
-                      {t('citizen.statusResolved') || 'Resolved'}
-                    </span>
-                    <span className="text-[10px] text-[var(--text-low)]">Action completed</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Routing is simulated caption */}
-              <div className="mt-6 text-center">
-                <span className="text-[11px] text-[var(--text-low)] uppercase tracking-wider bg-[var(--bg-2)] px-3 py-1 rounded-full border border-[var(--border)]">
-                  {t('citizen.routingSimulatedNotice') || 'Routing is simulated'}
-                </span>
-              </div>
-            </div>
-
-            {/* Report Summary Details */}
-            <div className="p-4 rounded-xl bg-[var(--bg-1)]/80 border border-[var(--border)] space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--text-low)]">Category:</span>
-                <span className="font-semibold text-amber-400 capitalize">
-                  {selectedCategory.replace('_', ' ')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--text-low)]">Location:</span>
-                <span className="font-medium text-[var(--text-hi)]">{coords.wardName}</span>
-              </div>
-              <div className="flex items-center justify-between font-mono text-[11px]">
-                <span className="text-[var(--text-low)]">Coordinates:</span>
-                <span className="text-[var(--text-mid)]">
-                  {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions: View on map & Back to Dashboard */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-              <Link
-                href="/map"
-                className="w-full sm:flex-1 py-3 px-4 rounded-full bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] text-sm font-semibold text-[var(--text-hi)] flex items-center justify-center gap-2 transition-colors"
-              >
-                <LuMap className="w-4 h-4 text-[var(--accent)]" />
-                <span>{t('citizen.viewOnMap') || 'View on Map'}</span>
-              </Link>
-              <Link
-                href="/citizen"
-                className="w-full sm:flex-1 py-3 px-4 rounded-full bg-[var(--accent)] hover:opacity-90 text-sm font-semibold text-[var(--bg-0)] flex items-center justify-center gap-2 transition-opacity"
-              >
-                <span>{t('citizen.backToDashboard') || 'Back to Dashboard'}</span>
-              </Link>
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         )}
       </div>
     </div>

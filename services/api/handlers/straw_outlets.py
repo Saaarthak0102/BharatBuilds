@@ -161,20 +161,30 @@ def handler(event, context):
         items = response.get('Items', [])
 
         if not items:
-            if district_normalized in ("patiala", "ludhiana", "sangrur", "moga"):
-                items = [
-                    {"facility_type": "depot", "name": "Kisan Seva Kendra Depot", "contact_hint": "9876543210", "is_sample": True, "district_id": district_normalized},
-                    {"facility_type": "aggregator", "name": "Green Fields Aggregators", "contact_hint": "9876543211", "is_sample": True, "district_id": district_normalized}
-                ]
-            else:
-                raise ValidationError(f"Unsupported district '{district_id}'. No straw outlets available.")
+            try:
+                from pathlib import Path
+                seed_path = Path(__file__).resolve().parents[3] / "data" / "seed" / "straw_outlets.json"
+                if seed_path.exists():
+                    with open(seed_path, "r", encoding="utf-8") as f:
+                        all_seed = json.load(f)
+                        items = [o for o in all_seed if str(o.get("district_id", "")).lower() == district_normalized]
+            except Exception as e:
+                logger.warning(f"Failed to load seed straw outlets: {e}")
+
+        if not items:
+            raise ValidationError(f"No straw outlets available for district '{district_id}'.")
 
         outlets = []
         for item in items:
             outlets.append({
-                "facility_type": item.get("facility_type", "Depot"),
+                "outlet_id": item.get("outlet_id", ""),
+                "facility_type": item.get("facility_type", "depot"),
                 "name": item.get("name", "Unknown"),
-                "contact_hint": item.get("contact_hint", "Contact local aggregator"),
+                "lat": float(item["lat"]) if "lat" in item and item["lat"] is not None else None,
+                "lng": float(item["lng"]) if "lng" in item and item["lng"] is not None else None,
+                "accepts": item.get("accepts", ["paddy_straw"]),
+                "pickup_support": item.get("pickup_support", "unknown"),
+                "contact_hint": item.get("contact_hint", "Contact your nearest depot or aggregator"),
                 "is_sample": item.get("is_sample", True),
                 "district_id": item.get("district_id", district_normalized)
             })

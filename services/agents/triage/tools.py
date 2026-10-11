@@ -57,6 +57,8 @@ def find_nearby_reports(geohash: str, radius: float = 1.0, category: str = "", h
         
         matches = []
         for item in response.get("Items", []):
+            if item.get("is_sample") or item.get("user_id") == "sample":
+                continue
             if item.get("created_at", "") >= cutoff_iso:
                 matches.append({
                     "report_id": item.get("report_id"),

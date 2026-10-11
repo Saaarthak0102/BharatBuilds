@@ -115,6 +115,10 @@ def build_straw_outlets(seed_outlets: list[dict[str, Any]]) -> list[dict[str, An
             "outlet_id": str(outlet["outlet_id"]),
             "facility_type": str(outlet["facility_type"]),
             "name": str(outlet["name"]),
+            "lat": parse_decimal(outlet.get("lat")),
+            "lng": parse_decimal(outlet.get("lng")),
+            "accepts": [str(x) for x in outlet.get("accepts", ["paddy_straw"])],
+            "pickup_support": str(outlet.get("pickup_support", "unknown")),
             "contact_hint": str(outlet.get("contact_hint", "Contact your nearest depot or aggregator")),
             "is_sample": True,
         }

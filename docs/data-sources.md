@@ -29,10 +29,15 @@ All sample data is clearly marked with `is_sample: true` and displayed with a "S
 
 | Dataset | File | Count | Description |
 | --- | --- | --- | --- |
-| Machine Slots | `data/seed/machines.json` | 5 | Happy Seeder, rotavator, mulcher, SMS slots across Punjab villages |
-| Straw Outlets | `data/seed/straw_outlets.json` | 7 | Biomass power plants, CBG plants, pellet makers, depots, aggregators, brick kilns, thermal co-firing |
+| Machine Slots | `data/seed/machines.json` | 11 | Happy Seeder, rotavator, mulcher, SMS, baler, zero-till drill slots across Punjab & Haryana villages |
+| Straw Outlets | `data/seed/straw_outlets.json` | 13 | Biomass power plants, CBG plants, pellet makers, depots, aggregators, brick kilns, thermal co-firing |
 | Villages | `data/seed/villages.json` | 8 | Punjab (Patiala, Ludhiana, Sangrur) and Haryana (Karnal) villages |
 | Wards | `data/seed/wards.json` | 7 | Delhi NCR areas (East, North, South, Central Delhi, Noida, Gurugram) |
+| Sample Reports | `data/seed/sample_reports.json` | 8 | Fictional community burning reports across Punjab, Haryana, and Delhi NCR |
+
+### Credits & Attribution
+- **Sample Data**: All sample reports, straw outlets, and machine slots are strictly fictional demonstration data. No real personal identities, contact numbers, vehicle plates, or enterprise facilities are referenced.
+- **Illustrative Images**: Sample report photographs located in `apps/web/public/sample-reports/` are AI-generated illustrations created via Gemini image generation tools for demonstration purposes.
 
 ## Straw Outlets — sourcing note
 

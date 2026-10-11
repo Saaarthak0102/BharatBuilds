@@ -32,6 +32,13 @@ export const pa: typeof en = {
     burningAvoided: 'ਅੱਗ ਲਾਉਣ ਤੋਂ ਬਚਾਈ ਗਈ ਜ਼ਮੀਨ',
     environmentSaved: 'ਵਾਤਾਵਰਣ ਦੀ ਬਚਤ',
     recentBookings: 'ਹਾਲੀਆ ਬੁਕਿੰਗਾਂ',
+    preferToSellStraw: 'ਕੀ ਤੁਸੀਂ ਆਪਣੀ ਪਰਾਲੀ ਵੇਚਣਾ ਚਾਹੁੰਦੇ ਹੋ?', // TODO: Human review (Punjabi)
+    browseAllOutlets: 'ਸਾਰੇ ਆਊਟਲੈੱਟ ਦੇਖੋ', // TODO: Human review (Punjabi)
+    topRanked: 'ਚੋਟੀ ਦੇ 3 ਆਊਟਲੈੱਟ', // TODO: Human review (Punjabi)
+    recommended: 'ਸਿਫ਼ਾਰਸ਼ ਕੀਤਾ ਗਿਆ', // TODO: Human review (Punjabi)
+    pickupAvailable: 'ਪਿਕਅੱਪ ਉਪਲਬਧ', // TODO: Human review (Punjabi)
+    dropoffOnly: 'ਸਿਰਫ਼ ਡ੍ਰੌਪ-ਆਫ਼', // TODO: Human review (Punjabi)
+    pickupOnRequest: 'ਬੇਨਤੀ ਤੇ ਪਿਕਅੱਪ', // TODO: Human review (Punjabi)
   },
   citizen: {
     ...en.citizen,
@@ -84,5 +91,8 @@ export const pa: typeof en = {
     catGarbageBurning: 'ਕੂੜਾ ਸਾੜਨਾ',
     catCrackerBurning: 'ਪਟਾਕੇ',
     catConstructionDust: 'ਨਿਰਮਾਣ ਧੂੜ',
+    similarReportsMerged: '{count} ਸਮਾਨ ਰਿਪੋਰਟਾਂ ਜੋੜੀਆਂ ਗਈਆਂ', // TODO: Human review (Punjabi)
+    needsReviewBadge: 'ਸਮੀਖਿਆ ਦੀ ਲੋੜ', // TODO: Human review (Punjabi)
+    youBadge: 'ਤੁਸੀਂ', // TODO: Human review (Punjabi)
   },
 };

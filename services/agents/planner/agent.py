@@ -11,6 +11,7 @@ The planner is the star agent. It:
 Max steps: 10 (configurable via MAX_AGENT_STEPS)
 """
 
+import json
 from typing import Optional
 from pydantic import BaseModel, Field
 import contextvars
@@ -124,18 +125,26 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
                         "is_sample": m.get("is_sample", True)
                     }
                     break
-        else:
-            straw_payload = payloads.get("find_straw_outlets", {})
-            outlets = straw_payload.get("outlets", [])
-            if outlets:
-                o = outlets[0]
-                straw_opt = {
-                    "outlet_id": o["outlet_id"],
-                    "facility_type": o["facility_type"],
-                    "name": o["name"],
-                    "contact_hint": o.get("contact_hint", "Contact your nearest depot"),
-                    "is_sample": o.get("is_sample", True)
-                }
+        # Always resolve top 3 ranked straw outlets deterministically
+        straw_payload = payloads.get("find_straw_outlets")
+        if not straw_payload:
+            try:
+                res_str = find_straw_outlets(village_id)
+                straw_payload = json.loads(res_str)
+            except Exception:
+                straw_payload = {}
+
+        ranked_outlets = straw_payload.get("top_3") or straw_payload.get("outlets", [])
+        straw_opt = None
+        if not machine_opt and ranked_outlets:
+            o = ranked_outlets[0]
+            straw_opt = {
+                "outlet_id": o["outlet_id"],
+                "facility_type": o["facility_type"],
+                "name": o["name"],
+                "contact_hint": o.get("contact_hint", "Contact your nearest depot or aggregator"),
+                "is_sample": o.get("is_sample", True)
+            }
 
         scoring_cfg = load_scoring_config()
         min_ideal_score = scoring_cfg.get("min_ideal_score", 60)
@@ -154,7 +163,9 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             f"Write a 2-3 sentence explanation for the farmer in {language}. "
             f"The best day is {best['date']} with score {best['score']}. "
             f"Sowing window status is {sw_status}. No ideal day flag is {no_ideal_day}. "
-            f"Machine option: {machine_opt}. Straw option: {straw_opt}."
+            f"Machine option: {machine_opt}. Straw option: {straw_opt}. "
+            f"Top 3 ranked straw outlets: {ranked_outlets[:3]}. "
+            f"The ranking is determined deterministically by distance and residue match; only explain the choices."
         )
         
         reasoning = structured_complete(AgentReasoning, reason_prompt)
@@ -166,6 +177,7 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             score_breakdown=best["breakdown"],
             machine_option=machine_opt,
             straw_outlet_option=straw_opt,
+            straw_outlets=ranked_outlets[:3],
             reason_text=reasoning.reason_text,
             tool_trace=trace,
             seven_day_scores=[DayScore(date=d["date"], score=d["score"]) for d in scored],
@@ -210,12 +222,32 @@ def _fallback_result(village_id: str, crop_stage: str, language: str, error: str
     else:
         message_key = "ideal_day_found"
 
+    # Resolve fallback straw outlets
+    try:
+        res_str = find_straw_outlets(village_id)
+        fallback_straw_payload = json.loads(res_str)
+        fallback_ranked = fallback_straw_payload.get("top_3", []) or fallback_straw_payload.get("outlets", [])
+    except Exception:
+        fallback_ranked = []
+
+    fallback_straw_opt = None
+    if fallback_ranked:
+        fo = fallback_ranked[0]
+        fallback_straw_opt = {
+            "outlet_id": fo["outlet_id"],
+            "facility_type": fo["facility_type"],
+            "name": fo["name"],
+            "contact_hint": fo.get("contact_hint", "Contact your nearest depot or aggregator"),
+            "is_sample": True
+        }
+
     result_dict = PlanResult(
         best_day=w_start,
         score=score_val,
         score_breakdown={"sowing_window": 10, "rain_and_soil": 10, "wind": 10, "fire_activity": 10, "machine_availability": 10},
         machine_option=None,
-        straw_outlet_option=None,
+        straw_outlet_option=fallback_straw_opt,
+        straw_outlets=fallback_ranked[:3],
         reason_text=reason,
         tool_trace=trace,
         seven_day_scores=[DayScore(date=w_start, score=score_val)],

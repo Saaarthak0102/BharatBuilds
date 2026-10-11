@@ -92,7 +92,7 @@ Role-based access: some endpoints require `custom:role = farmer` or `custom:role
 ### GET /v1/farmer/straw-outlets
 - **Auth:** `role=farmer`
 - **Query:** `?district=<district_id>`
-- **Response:** `{ "outlets": [...], "is_sample": true }`
+- **Response:** `{ "outlets": [{ "outlet_id": "...", "district_id": "...", "name": "...", "facility_type": "...", "lat": 30.42, "lng": 76.40, "accepts": ["paddy_straw"], "pickup_support": "yes", "contact_hint": "...", "is_sample": true }], "district": "patiala", "is_sample": true }`
 
 ### GET /v1/today
 - **Auth:** `role=citizen`
@@ -129,8 +129,8 @@ Role-based access: some endpoints require `custom:role = farmer` or `custom:role
 
 ### GET /v1/map/layers
 - **Auth:** Signed-in
-- **Query:** `?bbox=minLng,minLat,maxLng,maxLat` (optional)
-- **Response:** MapLayers (aqi_heatmap, fire_hotspots, wind_arrows, report_markers, machine_points, freshness)
+- **Query:** `?bbox=minLng,minLat,maxLng,maxLat&layers=aqi,fires,reports,machines` (optional)
+- **Response:** MapLayers (aqi_heatmap, fire_hotspots, wind_arrows, report_markers, machine_points, freshness) reading real DynamoDB tables with sample fallbacks.
 
 ### POST /v1/reports/upload-url
 - **Auth:** Signed-in
@@ -145,17 +145,11 @@ Role-based access: some endpoints require `custom:role = farmer` or `custom:role
 ### GET /v1/reports
 - **Auth:** Signed-in
 - **Query:**
-  - `?bbox=minLng,minLat,maxLng,maxLat` - Map scan of anonymized reports
-  - `?mine=true` - Queries `user_id-created_at-index` (never scan) returning caller's reports newest first (limit 20) with `status_counts`
-- **Response (`?mine=true`):**
-  ```json
-  {
-    "reports": [{ "report_id": "...", "status": "received", "created_at": "...", ... }],
-    "status_counts": { "received": 2, "routed": 1, "investigating": 0, "resolved": 1, "rejected": 0 },
-    "is_sample": false
-  }
-  ```
-- **Response (Public Map):** `{ "reports": [...], "is_sample": true }`
+  - `?mine=true` - Caller's reports from GSI (excludes sample items) with `status_counts`
+  - `?bbox=minLng,minLat,maxLng,maxLat` - Spatial bounding box
+  - `?category=crop_burning` - Category filter
+  - `?limit=20` - Limit (default 20, max 50)
+- **Response (Community Feed):** `{ "reports": [{ "report_id": "...", "category": "...", "status": "...", "area_name": "...", "public_lat": 30.48, "public_lng": 76.59, "created_at": "...", "confidence_label": "...", "needs_review": false, "merged_count": 1, "photo_url": "...", "is_sample": true, "is_mine": false }], "is_sample": true }`
 
 ### POST /v1/subscriptions
 - **Auth:** Signed-in

@@ -11,7 +11,7 @@ import { apiClient } from '@/lib/api/client';
 import { villages } from '@/lib/data/reference';
 import { PlanResult, FarmerProfile } from '@/lib/types';
 import { formatIST } from '@/lib/utils/date';
-import { LuArrowLeft, LuTractor, LuMap, LuInfo } from 'react-icons/lu';
+import { LuArrowLeft, LuTractor, LuMap, LuInfo, LuSparkles } from 'react-icons/lu';
 
 export default function FarmerFieldPlanner() {
   const router = useRouter();
@@ -247,44 +247,154 @@ export default function FarmerFieldPlanner() {
                     Note: This is guidance, not a guarantee. Updated just now.
                   </div>
                   
-                  {/* Machine / Outlet Call to action */}
-                  {planResult.machine_option ? (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-[var(--emerald)]/50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0 group-hover:scale-110 transition-transform">
-                          <LuTractor />
+                  {/* Machine & Straw Outlets Layout */}
+                  {(() => {
+                    const topStrawOutlets = (planResult.straw_outlets || []).slice(0, 3);
+                    const topOutletIds = topStrawOutlets.map((o) => o.outlet_id).filter(Boolean);
+
+                    const strawOutletsSection = topStrawOutlets.length > 0 ? (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--bg-1)]/90 border border-[var(--border)] space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border)]">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-[var(--text-hi)] text-base">
+                                Prefer to sell your straw?
+                              </h3>
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                Top 3 Ranked
+                              </span>
+                            </div>
+                            <p className="text-xs text-[var(--text-mid)] mt-0.5">
+                              Ranked deterministically by distance from your village, accepted residue, and pickup support.
+                            </p>
+                          </div>
+                          <PillButton
+                            variant="primary-silver"
+                            onClick={() =>
+                              router.push(
+                                `/farmer/straw-outlets?recommended=${topOutletIds.join(',')}`
+                              )
+                            }
+                            className="text-xs py-1.5 px-3.5 self-start sm:self-auto"
+                          >
+                            Browse All Outlets
+                          </PillButton>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-[var(--text-hi)]">{planResult.machine_option.machine_type} Available</h3>
-                          <p className="text-sm text-[var(--text-mid)]">{planResult.machine_option.owner_label}</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {topStrawOutlets.map((outlet, idx) => (
+                            <div
+                              key={outlet.outlet_id || idx}
+                              className="p-3.5 rounded-xl bg-[var(--bg-0)] border border-[var(--border)] hover:border-amber-400/50 transition-all flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    Rank #{idx + 1}
+                                  </span>
+                                  <span className="text-xs font-semibold text-[var(--emerald)]">
+                                    ~{outlet.distance_km} km
+                                  </span>
+                                </div>
+                                <h4 className="text-sm font-bold text-[var(--text-hi)] mb-1 leading-tight">
+                                  {outlet.name}
+                                </h4>
+                                <div className="text-[11px] text-[var(--text-low)] capitalize mb-2">
+                                  {(outlet.facility_type || '').replace(/_/g, ' ')} • {outlet.district}
+                                </div>
+                                <p className="text-xs text-[var(--text-mid)] bg-[var(--bg-1)] p-2 rounded-lg border border-[var(--border)] leading-relaxed">
+                                  {outlet.reason || 'Residue match & proximate facility'}
+                                </p>
+                              </div>
+
+                              <div className="mt-3 pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px]">
+                                <span className="text-[var(--text-low)]">
+                                  Pickup: {outlet.pickup_support === 'yes' ? 'Available' : 'Drop-off only'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    router.push(
+                                      `/farmer/straw-outlets?recommended=${topOutletIds.join(',')}`
+                                    )
+                                  }
+                                  className="text-[var(--accent)] hover:underline font-semibold cursor-pointer"
+                                >
+                                  View details &rarr;
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <PillButton 
-                        variant="accent"
-                        onClick={() => router.push(`/farmer/book?slot_id=${planResult.machine_option!.slot_id}&date=${planResult.best_day}`)}
-                      >
-                        Book Slot
-                      </PillButton>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-amber-500/50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 text-xl shrink-0 group-hover:scale-110 transition-transform">
-                          <LuMap />
+                    ) : null;
+
+                    const machineSection = planResult.machine_option ? (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-[var(--emerald)]/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0 group-hover:scale-110 transition-transform">
+                            <LuTractor />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-[var(--text-hi)]">
+                              {planResult.machine_option.machine_type} Available
+                            </h3>
+                            <p className="text-sm text-[var(--text-mid)]">
+                              {planResult.machine_option.owner_label}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-[var(--text-hi)]">No machines found</h3>
-                          <p className="text-sm text-[var(--text-mid)]">Consider delivering to a straw outlet nearby.</p>
-                        </div>
+                        <PillButton
+                          variant="accent"
+                          onClick={() =>
+                            router.push(
+                              `/farmer/book?slot_id=${planResult.machine_option!.slot_id}&date=${planResult.best_day}`
+                            )
+                          }
+                        >
+                          Book Slot
+                        </PillButton>
                       </div>
-                      <PillButton 
-                        variant="primary-silver"
-                        onClick={() => router.push('/farmer/straw-outlets')}
-                      >
-                        View Outlets
-                      </PillButton>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)] group hover:border-amber-500/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 text-xl shrink-0 group-hover:scale-110 transition-transform">
+                            <LuMap />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-[var(--text-hi)]">No machines found</h3>
+                            <p className="text-sm text-[var(--text-mid)]">
+                              Consider delivering to a straw outlet nearby.
+                            </p>
+                          </div>
+                        </div>
+                        <PillButton
+                          variant="primary-silver"
+                          onClick={() => router.push('/farmer/straw-outlets')}
+                        >
+                          View Outlets
+                        </PillButton>
+                      </div>
+                    );
+
+                    // When no machine is free, straw outlets section is visually first
+                    if (!planResult.machine_option) {
+                      return (
+                        <div className="space-y-4">
+                          {strawOutletsSection}
+                          {machineSection}
+                        </div>
+                      );
+                    }
+
+                    // Otherwise machine option is first, with straw outlets below
+                    return (
+                      <div className="space-y-4">
+                        {machineSection}
+                        {strawOutletsSection}
+                      </div>
+                    );
+                  })()}
                 </div>
              </GlassCard>
 

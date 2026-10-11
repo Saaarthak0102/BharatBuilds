@@ -1,0 +1,94 @@
+{
+  "aqi_stations": [
+    {
+      "ward_id": "ward-east-delhi-001",
+      "station": "Anand Vihar",
+      "lat": 28.6692,
+      "lng": 77.3055,
+      "aqi": 342,
+      "category": "Very Poor",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-east-delhi-002",
+      "station": "Laxmi Nagar",
+      "lat": 28.6304,
+      "lng": 77.2770,
+      "aqi": 285,
+      "category": "Poor",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-north-delhi-001",
+      "station": "Civil Lines",
+      "lat": 28.6814,
+      "lng": 77.2226,
+      "aqi": 218,
+      "category": "Poor",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-south-delhi-001",
+      "station": "Hauz Khas",
+      "lat": 28.5494,
+      "lng": 77.2001,
+      "aqi": 168,
+      "category": "Moderate",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-central-delhi-001",
+      "station": "Connaught Place",
+      "lat": 28.6315,
+      "lng": 77.2167,
+      "aqi": 195,
+      "category": "Moderate",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-noida-001",
+      "station": "Sector 62, Noida",
+      "lat": 28.6252,
+      "lng": 77.3640,
+      "aqi": 298,
+      "category": "Poor",
+      "is_sample": true
+    },
+    {
+      "ward_id": "ward-gurgaon-001",
+      "station": "Sector 29, Gurugram",
+      "lat": 28.4595,
+      "lng": 77.0266,
+      "aqi": 242,
+      "category": "Poor",
+      "is_sample": true
+    }
+  ],
+  "fire_points": [
+    { "fire_id": "fp-001", "lat": 30.452, "lng": 76.581, "frp": 42.5, "confidence": "high", "detected_at": "2026-10-11T08:30:00Z", "is_sample": true },
+    { "fire_id": "fp-002", "lat": 30.410, "lng": 76.495, "frp": 28.1, "confidence": "nominal", "detected_at": "2026-10-11T08:15:00Z", "is_sample": true },
+    { "fire_id": "fp-003", "lat": 30.342, "lng": 76.120, "frp": 55.3, "confidence": "high", "detected_at": "2026-10-11T09:00:00Z", "is_sample": true },
+    { "fire_id": "fp-004", "lat": 30.385, "lng": 76.210, "frp": 31.0, "confidence": "nominal", "detected_at": "2026-10-11T07:45:00Z", "is_sample": true },
+    { "fire_id": "fp-005", "lat": 30.725, "lng": 76.240, "frp": 64.8, "confidence": "high", "detected_at": "2026-10-11T09:20:00Z", "is_sample": true },
+    { "fire_id": "fp-006", "lat": 30.680, "lng": 76.180, "frp": 19.5, "confidence": "nominal", "detected_at": "2026-10-11T06:50:00Z", "is_sample": true },
+    { "fire_id": "fp-007", "lat": 30.812, "lng": 75.495, "frp": 72.4, "confidence": "high", "detected_at": "2026-10-11T08:40:00Z", "is_sample": true },
+    { "fire_id": "fp-008", "lat": 30.760, "lng": 75.420, "frp": 38.6, "confidence": "nominal", "detected_at": "2026-10-11T07:10:00Z", "is_sample": true },
+    { "fire_id": "fp-009", "lat": 30.540, "lng": 75.910, "frp": 51.2, "confidence": "high", "detected_at": "2026-10-11T09:15:00Z", "is_sample": true },
+    { "fire_id": "fp-010", "lat": 30.490, "lng": 75.830, "frp": 22.7, "confidence": "nominal", "detected_at": "2026-10-11T07:05:00Z", "is_sample": true },
+    { "fire_id": "fp-011", "lat": 30.395, "lng": 75.580, "frp": 58.0, "confidence": "high", "detected_at": "2026-10-11T08:55:00Z", "is_sample": true },
+    { "fire_id": "fp-012", "lat": 30.350, "lng": 75.510, "frp": 16.3, "confidence": "nominal", "detected_at": "2026-10-11T06:30:00Z", "is_sample": true },
+    { "fire_id": "fp-013", "lat": 29.710, "lng": 76.970, "frp": 44.9, "confidence": "high", "detected_at": "2026-10-11T08:25:00Z", "is_sample": true },
+    { "fire_id": "fp-014", "lat": 29.660, "lng": 76.920, "frp": 25.4, "confidence": "nominal", "detected_at": "2026-10-11T07:35:00Z", "is_sample": true },
+    { "fire_id": "fp-015", "lat": 29.855, "lng": 76.945, "frp": 36.2, "confidence": "nominal", "detected_at": "2026-10-11T08:05:00Z", "is_sample": true },
+    { "fire_id": "fp-016", "lat": 29.920, "lng": 76.880, "frp": 61.1, "confidence": "high", "detected_at": "2026-10-11T09:30:00Z", "is_sample": true },
+    { "fire_id": "fp-017", "lat": 30.150, "lng": 76.320, "frp": 33.7, "confidence": "nominal", "detected_at": "2026-10-11T08:10:00Z", "is_sample": true },
+    { "fire_id": "fp-018", "lat": 30.220, "lng": 76.410, "frp": 48.0, "confidence": "high", "detected_at": "2026-10-11T08:50:00Z", "is_sample": true },
+    { "fire_id": "fp-019", "lat": 30.610, "lng": 75.680, "frp": 29.4, "confidence": "nominal", "detected_at": "2026-10-11T07:25:00Z", "is_sample": true },
+    { "fire_id": "fp-020", "lat": 30.670, "lng": 75.750, "frp": 53.6, "confidence": "high", "detected_at": "2026-10-11T09:05:00Z", "is_sample": true },
+    { "fire_id": "fp-021", "lat": 29.980, "lng": 76.450, "frp": 39.8, "confidence": "nominal", "detected_at": "2026-10-11T08:20:00Z", "is_sample": true },
+    { "fire_id": "fp-022", "lat": 30.080, "lng": 76.550, "frp": 47.1, "confidence": "high", "detected_at": "2026-10-11T08:45:00Z", "is_sample": true },
+    { "fire_id": "fp-023", "lat": 30.850, "lng": 75.950, "frp": 67.2, "confidence": "high", "detected_at": "2026-10-11T09:35:00Z", "is_sample": true },
+    { "fire_id": "fp-024", "lat": 30.280, "lng": 75.800, "frp": 21.0, "confidence": "nominal", "detected_at": "2026-10-11T06:40:00Z", "is_sample": true },
+    { "fire_id": "fp-025", "lat": 29.580, "lng": 76.850, "frp": 34.5, "confidence": "nominal", "detected_at": "2026-10-11T07:50:00Z", "is_sample": true }
+  ]
+}

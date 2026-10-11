@@ -98,11 +98,39 @@ export interface MachineSlot {
 
 // ─── Straw Outlet Models ────────────────────────────────
 
+export interface CommunityReport {
+  report_id: string;
+  category: string;
+  status: string;
+  area_name?: string;
+  public_lat?: number;
+  public_lng?: number;
+  created_at: string;
+  confidence_label?: string;
+  needs_review?: boolean;
+  merged_count?: number;
+  photo_url?: string | null;
+  is_sample: boolean;
+  is_mine?: boolean;
+  location?: Location;
+}
+
+// ─── Straw Outlet Models ────────────────────────────────
+
 export interface StrawOutlet {
   outlet_id: string;
   district_id: string;
+  district?: string;
   facility_type: FacilityType;
   name: string;
+  lat?: number | null;
+  lng?: number | null;
+  accepts?: string[];
+  pickup_support?: string;
+  distance_km?: number;
+  ranking_reason?: string;
+  reason?: string;
+  rank?: number;
   contact_hint: string;
   is_sample: boolean;
 }
@@ -150,6 +178,7 @@ export interface PlanResult {
   score_breakdown: ScoreBreakdown;
   machine_option: MachineOption | null;
   straw_outlet_option: StrawOutletOption | null;
+  straw_outlets?: StrawOutlet[];
   reason_text: string;
   tool_trace: ToolTraceEntry[];
   seven_day_scores: DayScore[];
@@ -273,15 +302,29 @@ export interface FarmerBookingsResponse {
 
 // ─── Map Layer Models ───────────────────────────────────
 
+export interface LayerFeatureCollection extends GeoJSON.FeatureCollection {
+  fetched_at?: string;
+  is_sample?: boolean;
+}
+
 export interface MapLayers {
-  aqi_heatmap: GeoJSON.FeatureCollection;
-  fire_hotspots: GeoJSON.FeatureCollection;
-  wind_arrows: GeoJSON.FeatureCollection;
-  report_markers: GeoJSON.FeatureCollection;
-  machine_points: GeoJSON.FeatureCollection;
+  aqi?: LayerFeatureCollection;
+  fires?: LayerFeatureCollection;
+  reports?: LayerFeatureCollection;
+  machines?: LayerFeatureCollection;
+  aqi_heatmap?: GeoJSON.FeatureCollection;
+  fire_hotspots?: GeoJSON.FeatureCollection;
+  wind_arrows?: GeoJSON.FeatureCollection;
+  report_markers?: GeoJSON.FeatureCollection;
+  machine_points?: GeoJSON.FeatureCollection;
   freshness: {
-    label: string;
+    label?: string;
     is_sample: boolean;
+    aqi_fetched_at?: string;
+    fires_fetched_at?: string;
+    reports_fetched_at?: string;
+    machines_fetched_at?: string;
+    [key: string]: any;
   };
 }
 

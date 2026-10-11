@@ -1,6 +1,7 @@
 import time
 import os
 import json
+import math
 from pathlib import Path
 from boto3.dynamodb.conditions import Key
 import boto3
@@ -77,6 +78,63 @@ def resolve_district_from_village_or_name(input_str: str) -> str:
             return dist.lower()
     cleaned = cleaned.replace("district-", "").replace("-district", "")
     return cleaned
+
+def _load_village_coords() -> dict[str, tuple[float, float]]:
+    potential_roots = [
+        Path.cwd() / "data" / "seed" / "villages.json",
+        Path(__file__).resolve().parents[3] / "data" / "seed" / "villages.json",
+        Path("/var/task/data/seed/villages.json"),
+    ]
+    for p in potential_roots:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    v_list = json.load(f)
+                    return {v["village_id"]: (float(v["lat"]), float(v["lng"])) for v in v_list if "village_id" in v and "lat" in v and "lng" in v}
+            except Exception:
+                pass
+    return {
+        "village-patiala-001": (30.48, 76.59),
+        "village-patiala-002": (30.37, 76.15),
+        "village-ludhiana-001": (30.70, 76.22),
+        "village-ludhiana-002": (30.79, 75.47),
+        "village-sangrur-001": (30.53, 75.88),
+        "village-sangrur-002": (30.38, 75.55),
+        "village-karnal-001": (29.69, 76.99),
+        "village-karnal-002": (29.84, 76.93),
+    }
+
+VILLAGE_COORDS_MAP = _load_village_coords()
+
+DISTRICT_CENTROIDS = {
+    "patiala": (30.42, 76.37),
+    "ludhiana": (30.75, 75.84),
+    "sangrur": (30.45, 75.71),
+    "karnal": (29.76, 76.96),
+}
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def _load_all_straw_outlets() -> list[dict]:
+    potential_roots = [
+        Path.cwd() / "data" / "seed" / "straw_outlets.json",
+        Path(__file__).resolve().parents[3] / "data" / "seed" / "straw_outlets.json",
+        Path("/var/task/data/seed/straw_outlets.json"),
+    ]
+    for p in potential_roots:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return []
 
 class ForecastArgs(BaseModel):
     location: str = Field(description="Village or district name / geohash")
@@ -294,11 +352,11 @@ def find_machine_slots(village_id: str, start_date: str, end_date: str) -> str:
 
 
 class StrawArgs(BaseModel):
-    district_id: str = Field(description="District identifier")
+    district_id: str = Field(description="District or village identifier")
 
 @tool
 def find_straw_outlets(district_id: str) -> str:
-    """Find nearby straw outlets. All entries are sample data."""
+    """Find nearby straw outlets with deterministic ranking by distance, residue match, and pickup support."""
     start_t = time.time()
     try:
         args = StrawArgs(district_id=district_id)
@@ -306,23 +364,86 @@ def find_straw_outlets(district_id: str) -> str:
         _record_trace("find_straw_outlets", district_id, False, "error", False, int((time.time() - start_t)*1000))
         return f"Error: {e}"
 
-    norm_district_id = resolve_district_from_village_or_name(args.district_id)
+    norm_input = args.district_id.strip().lower()
+    norm_district_id = resolve_district_from_village_or_name(norm_input)
+
+    # Determine reference coordinates for distance ranking
+    ref_coords = None
+    for v_id, coords in VILLAGE_COORDS_MAP.items():
+        if v_id in norm_input or norm_input in v_id:
+            ref_coords = coords
+            break
+    if not ref_coords:
+        ref_coords = DISTRICT_CENTROIDS.get(norm_district_id, (30.4, 76.2))
+
+    # Retrieve straw outlets from DynamoDB or seed
     table = _get_table(os.environ.get("STRAW_OUTLETS_TABLE", "saans-straw-outlets-dev"))
-
+    raw_outlets = []
     try:
-        response = table.query(
-            KeyConditionExpression=Key("district_id").eq(norm_district_id)
-        )
-        outlets = cache._from_decimal(response.get("Items", []))
-        payload = {
-            "district_id": norm_district_id,
-            "outlets": outlets,
-            "note": "Sample data. Contact your nearest depot or aggregator."
-        }
-        ok = True
-    except Exception as e:
-        payload = {"error": str(e), "outlets": []}
-        ok = False
+        response = table.scan()
+        raw_outlets = cache._from_decimal(response.get("Items", []))
+    except Exception:
+        pass
 
-    _record_trace("find_straw_outlets", norm_district_id, ok, "live", True, int((time.time() - start_t)*1000), payload=payload)
+    if not raw_outlets:
+        raw_outlets = _load_all_straw_outlets()
+
+    total_outlets = len(raw_outlets)
+    unique_districts = len(set(str(o.get("district_id", "")).lower() for o in raw_outlets))
+
+    ranked_outlets = []
+    for o in raw_outlets:
+        o_lat = float(o["lat"]) if "lat" in o and o["lat"] is not None else ref_coords[0]
+        o_lng = float(o["lng"]) if "lng" in o and o["lng"] is not None else ref_coords[1]
+        dist_km = haversine_km(ref_coords[0], ref_coords[1], o_lat, o_lng)
+
+        accepts = o.get("accepts", ["paddy_straw"])
+        if isinstance(accepts, str):
+            accepts = [accepts]
+        residue_match = 1 if ("paddy_straw" in accepts or "all" in accepts) else 0
+
+        pickup = str(o.get("pickup_support", "unknown")).lower()
+        pickup_score = 2 if pickup == "yes" else (1 if pickup == "unknown" else 0)
+
+        reasons = [f"~{round(dist_km)} km away"]
+        if residue_match:
+            reasons.append("accepts paddy straw")
+        if pickup == "yes":
+            reasons.append("pickup support available")
+        elif pickup == "unknown":
+            reasons.append("pickup unverified")
+
+        ranked_outlets.append({
+            "outlet_id": o.get("outlet_id", ""),
+            "district_id": str(o.get("district_id", "")).lower(),
+            "facility_type": o.get("facility_type", "depot"),
+            "name": o.get("name", "Unknown"),
+            "lat": o_lat,
+            "lng": o_lng,
+            "distance_km": round(dist_km, 1),
+            "accepts": accepts,
+            "pickup_support": pickup,
+            "contact_hint": o.get("contact_hint", "Contact your nearest depot or aggregator"),
+            "ranking_reason": " • ".join(reasons),
+            "is_sample": bool(o.get("is_sample", True)),
+            "_sort_key": (-residue_match, round(dist_km, 1), -pickup_score)
+        })
+
+    # Sort deterministically
+    ranked_outlets.sort(key=lambda x: x["_sort_key"])
+    top_3 = ranked_outlets[:3]
+    for it in top_3:
+        it.pop("_sort_key", None)
+
+    payload = {
+        "district_id": norm_district_id,
+        "total_checked": total_outlets,
+        "districts_checked": unique_districts,
+        "top_3": top_3,
+        "outlets": top_3,
+        "note": "Sample data. Contact your nearest depot or aggregator."
+    }
+
+    trace_msg = f"checked {total_outlets} outlets in {unique_districts} districts, top 3 ranked by distance and residue match"
+    _record_trace("find_straw_outlets", trace_msg, True, "live", True, int((time.time() - start_t)*1000), payload=payload)
     return json.dumps(payload, default=str)

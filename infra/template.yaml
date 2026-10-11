@@ -548,6 +548,8 @@ Resources:
             TableName: !Ref DataCacheTable
         - DynamoDBReadPolicy:
             TableName: !Ref ReportsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref MachineSlotsTable
       Events:
         GetMapLayers:
           Type: Api

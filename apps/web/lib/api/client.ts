@@ -20,6 +20,7 @@ import type {
   FarmerBookingsResponse,
   FarmerImpact,
   FarmerBooking,
+  CommunityReport,
 } from '../types';
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
@@ -336,6 +337,160 @@ export async function getReports(
   return fetchWithAuth(url);
 }
 
+export async function getCommunityReports(options?: {
+  bbox?: string;
+  category?: string;
+  limit?: number;
+}): Promise<ApiResponse<{ reports: CommunityReport[]; is_sample: boolean }>> {
+  const params = new URLSearchParams();
+  if (options?.bbox) params.set('bbox', options.bbox);
+  if (options?.category) params.set('category', options.category);
+  if (options?.limit) params.set('limit', String(options.limit));
+  const qs = params.toString();
+  const url = `${API_ENDPOINTS.REPORTS.GET}${qs ? `?${qs}` : ''}`;
+
+  if (isMockMode) {
+    const mockFeed: CommunityReport[] = [
+      {
+        report_id: 'sample-report-001',
+        category: 'crop_burning',
+        status: 'resolved',
+        area_name: 'Rajpura Fields',
+        public_lat: 30.482,
+        public_lng: 76.594,
+        created_at: new Date(Date.now() - 42 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 3,
+        photo_url: '/sample-reports/r01.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-002',
+        category: 'crop_burning',
+        status: 'routed',
+        area_name: 'Khanna Outskirts',
+        public_lat: 30.704,
+        public_lng: 76.218,
+        created_at: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r02.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-003',
+        category: 'crop_burning',
+        status: 'received',
+        area_name: 'Karnal Farm Zone',
+        public_lat: 29.692,
+        public_lng: 76.985,
+        created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        confidence_label: 'Needs verification',
+        needs_review: true,
+        merged_count: 1,
+        photo_url: '/sample-reports/r03.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-004',
+        category: 'garbage_burning',
+        status: 'routed',
+        area_name: 'Anand Vihar',
+        public_lat: 28.6698,
+        public_lng: 77.3061,
+        created_at: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r04.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-005',
+        category: 'garbage_burning',
+        status: 'resolved',
+        area_name: 'Laxmi Nagar',
+        public_lat: 28.6310,
+        public_lng: 77.2785,
+        created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r05.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-006',
+        category: 'cracker_burning',
+        status: 'received',
+        area_name: 'Civil Lines',
+        public_lat: 28.6820,
+        public_lng: 77.2230,
+        created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+        confidence_label: 'Moderate confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r06.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-007',
+        category: 'construction_dust',
+        status: 'routed',
+        area_name: 'Sector 62, Noida',
+        public_lat: 28.6258,
+        public_lng: 77.3645,
+        created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r07.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+      {
+        report_id: 'sample-report-008',
+        category: 'construction_dust',
+        status: 'resolved',
+        area_name: 'Hauz Khas',
+        public_lat: 28.5498,
+        public_lng: 77.2010,
+        created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+        confidence_label: 'High confidence',
+        needs_review: false,
+        merged_count: 1,
+        photo_url: '/sample-reports/r08.jpg',
+        is_sample: true,
+        is_mine: false,
+      },
+    ];
+
+    let filtered = mockFeed;
+    if (options?.category) {
+      filtered = filtered.filter((r) => r.category === options.category);
+    }
+    const limit = options?.limit || 20;
+    return new Promise((resolve) =>
+      resolve({
+        data: {
+          reports: filtered.slice(0, limit),
+          is_sample: true,
+        },
+      })
+    );
+  }
+
+  return fetchWithAuth(url);
+}
+
 // ─── Profile Mapping & Retrieval (Backend snake_case -> UI camelCase) ──────
 
 export interface MappedProfile {
@@ -574,6 +729,7 @@ export const apiClient = {
       const res = await getProfile();
       return { data: res.data as unknown as CitizenProfile };
     },
+    communityReports: getCommunityReports,
   },
   map: {
     layers: async (bbox?: string): Promise<ApiResponse<MapLayers>> => {
@@ -588,6 +744,7 @@ export const apiClient = {
   reports: {
     get: getReports,
     mine: () => getReports({ mine: true }),
+    community: getCommunityReports,
     getById: getReport,
     uploadUrl: getUploadUrl,
     uploadPhoto,

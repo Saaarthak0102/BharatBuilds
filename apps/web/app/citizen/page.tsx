@@ -13,8 +13,9 @@ import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion, ToolTraceItem } from '@/components/dashboard/AgentLogAccordion';
 import { EmergencyFeelingHeavyModal } from '@/components/dashboard/EmergencyFeelingHeavyModal';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+import { ReportCardModal } from '@/components/citizen/ReportCardModal';
 import { apiClient } from '@/lib/api/client';
-import { TodayResponse, CitizenProfile, WeatherResponse } from '@/lib/types';
+import { TodayResponse, CitizenProfile, WeatherResponse, CommunityReport } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
 import { formatIST, timeIST, relativeAgo } from '@/lib/utils/date';
 import { getWard } from '@/lib/data/reference';
@@ -109,10 +110,12 @@ export default function CitizenDashboard() {
   const [today, setToday] = useState<TodayResponse | null>(null);
   const [profile, setProfile] = useState<CitizenProfile | null>(null);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [reports, setReports] = useState<any[]>([]);
+  const [communityReports, setCommunityReports] = useState<CommunityReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<CommunityReport | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportsCount, setReportsCount] = useState(0);
-  const [verifiedCount, setVerifiedCount] = useState(0);
-  const [actionTakenCount, setActionTakenCount] = useState(0);
+  const [routedCount, setRoutedCount] = useState(0);
+  const [resolvedCount, setResolvedCount] = useState(0);
   const [isSampleReports, setIsSampleReports] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
@@ -144,7 +147,7 @@ export default function CitizenDashboard() {
         const [todayRes, weatherRes, reportsRes] = await Promise.allSettled([
           apiClient.citizen.today(areaId),
           apiClient.weather(areaId),
-          apiClient.reports.get({ mine: true }),
+          apiClient.reports.community({ limit: 50 }),
         ]);
 
         if (mounted) {
@@ -156,29 +159,16 @@ export default function CitizenDashboard() {
           }
           if (reportsRes.status === 'fulfilled') {
             const rData = reportsRes.value.data;
-            const fetchedReports = rData?.reports || [];
-            setReports(fetchedReports);
+            const commList = (rData?.reports || []) as CommunityReport[];
+            setCommunityReports(commList);
             setIsSampleReports(Boolean(rData?.is_sample));
-            const counts = rData?.status_counts;
-            if (counts) {
-              setReportsCount(counts.TOTAL ?? fetchedReports.length);
-              setVerifiedCount(counts.ROUTED ?? 0);
-              setActionTakenCount(counts.RESOLVED ?? 0);
-            } else {
-              setReportsCount(fetchedReports.length);
-              setVerifiedCount(
-                fetchedReports.filter((r) => {
-                  const s = (r.status || '').toLowerCase();
-                  return s === 'verified' || s === 'routed';
-                }).length
-              );
-              setActionTakenCount(
-                fetchedReports.filter((r) => {
-                  const s = (r.status || '').toLowerCase();
-                  return s === 'action_taken' || s === 'action taken' || s === 'resolved';
-                }).length
-              );
-            }
+            setReportsCount(commList.length);
+            setRoutedCount(
+              commList.filter((r) => (r.status || '').toLowerCase() === 'routed').length
+            );
+            setResolvedCount(
+              commList.filter((r) => (r.status || '').toLowerCase() === 'resolved').length
+            );
           }
         }
       } catch (err) {
@@ -224,33 +214,6 @@ export default function CitizenDashboard() {
     ? `${formatIST(currentTime, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeIST(currentTime)}`
     : 'Today';
   const weatherSnapshot = mapWeatherToSnapshot(weather, today?.aqi);
-
-  const reportListItems: RecentListItem[] = reports.map((r, idx) => {
-    const rawTime = r.created_at || r.time;
-    const formattedTime = rawTime
-      ? formatIST(rawTime, {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        })
-      : 'Recently';
-    const locText = r.location
-      ? typeof r.location === 'object' && r.location.lat
-        ? `${r.location.lat.toFixed(2)}°N, ${r.location.lng.toFixed(2)}°E`
-        : String(r.location)
-      : wardName;
-
-    return {
-      id: r.report_id || r.id || `rpt-${idx}`,
-      title: (r.category || 'Burning Report').replace(/_/g, ' '),
-      subtitle: `${locText} • ${formattedTime}`,
-      status: (r.status || 'Received').replace(/_/g, ' '),
-      statusType: (r.status || 'received').toLowerCase().replace(/\s+/g, '_') as any,
-      icon: <LuCamera className="w-3.5 h-3.5 text-amber-400" />,
-    };
-  });
 
   const sourcesTraces: ToolTraceItem[] = (today?.sources || []).map((s) => ({
     tool: s.name,
@@ -498,7 +461,7 @@ export default function CitizenDashboard() {
                       badge={isSampleReports ? 'SAMPLE' : undefined}
                       icon={<LuLeaf className="w-3.5 h-3.5 text-[var(--cyan)]" />}
                       value={`${reportsCount} reports`}
-                      caption={`${verifiedCount} verified • ${actionTakenCount} action taken`}
+                      caption={`${routedCount} routed • ${resolvedCount} resolved`}
                     />
 
                     {/* 3. Did you know? (Rotating facts with fade & pause on hover) */}
@@ -566,26 +529,79 @@ export default function CitizenDashboard() {
                       </div>
                     </Link>
 
-                    {/* NEW stats row chips */}
+                    {/* Community counts chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
                         Reports: {reportsCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Verified: {verifiedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Routed: {routedCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Action taken: {actionTakenCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Resolved: {resolvedCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                     </div>
 
                     <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
-                      <RecentList
-                        title={t('citizen.recentReports')}
-                        items={reportListItems}
-                        totalCount={reportsCount}
-                        emptyText={t('citizen.noReports')}
-                      />
+                      <div className="w-full mt-2 pt-2 border-t border-[var(--border)] flex flex-col min-h-0 flex-1">
+                        <div className="flex items-center justify-between mb-2 shrink-0">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-mid)]">
+                            Recent reports
+                          </span>
+                          <span className="text-[11px] text-[var(--text-low)]">
+                            {reportsCount} total
+                          </span>
+                        </div>
+                        {communityReports.length === 0 ? (
+                          <p className="text-xs text-[var(--text-low)] py-1 italic">
+                            {t('citizen.noReports')}
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5 overflow-y-auto min-h-0 flex-1 pr-0.5">
+                            {communityReports.slice(0, 5).map((r) => {
+                              const s = (r.status || '').toLowerCase();
+                              const badgeClass =
+                                s === 'resolved'
+                                  ? 'text-[var(--emerald)] bg-[var(--emerald)]/10 border-[var(--emerald)]/20'
+                                  : s === 'routed'
+                                  ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                                  : 'text-[var(--cyan)] bg-[var(--cyan)]/10 border-[var(--cyan)]/20';
+
+                              return (
+                                <button
+                                  key={r.report_id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedReport(r);
+                                    setIsReportModalOpen(true);
+                                  }}
+                                  className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg bg-[var(--bg-1)]/70 border border-[var(--border)] text-xs hover:border-[var(--border-strong)] hover:bg-[var(--bg-2)]/60 transition-colors cursor-pointer"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-6 h-6 rounded bg-[var(--bg-2)] flex items-center justify-center shrink-0 text-amber-400">
+                                      <LuCamera className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-medium text-[var(--text-hi)] truncate leading-tight capitalize">
+                                        {r.category.replace(/_/g, ' ')}
+                                      </div>
+                                      <div className="text-[11px] text-[var(--text-low)] truncate leading-tight mt-0.5">
+                                        {r.area_name || 'Delhi NCR'} • {relativeAgo(r.created_at)}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border uppercase tracking-wider ${badgeClass}`}
+                                  >
+                                    {r.status}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </ActionCard>
@@ -659,6 +675,13 @@ export default function CitizenDashboard() {
           />
         </div>
       </div>
+
+      {/* Community Report Card Modal */}
+      <ReportCardModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        report={selectedReport}
+      />
     </div>
   );
 }

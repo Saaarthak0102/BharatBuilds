@@ -32,6 +32,13 @@ export const hi: typeof en = {
     burningAvoided: 'बची पराली/जमीन',
     environmentSaved: 'पर्यावरण बचत',
     recentBookings: 'हाल की बुकिंग',
+    preferToSellStraw: 'क्या आप अपनी पराली बेचना पसंद करेंगे?', // TODO: Human review (Hindi)
+    browseAllOutlets: 'सभी आउटलेट देखें', // TODO: Human review (Hindi)
+    topRanked: 'शीर्ष 3 आउटलेट', // TODO: Human review (Hindi)
+    recommended: 'अनुशंसित', // TODO: Human review (Hindi)
+    pickupAvailable: 'पिकअप उपलब्ध', // TODO: Human review (Hindi)
+    dropoffOnly: 'केवल ड्रॉप-ऑफ', // TODO: Human review (Hindi)
+    pickupOnRequest: 'अनुरोध पर पिकअप', // TODO: Human review (Hindi)
   },
   citizen: {
     ...en.citizen,
@@ -84,6 +91,9 @@ export const hi: typeof en = {
     catGarbageBurning: 'कचरा जलाना',
     catCrackerBurning: 'पटाखे',
     catConstructionDust: 'निर्माण धूल',
+    similarReportsMerged: '{count} समान रिपोर्टें जोड़ी गईं', // TODO: Human review (Hindi)
+    needsReviewBadge: 'समीक्षा आवश्यक', // TODO: Human review (Hindi)
+    youBadge: 'आप', // TODO: Human review (Hindi)
   },
 };
 

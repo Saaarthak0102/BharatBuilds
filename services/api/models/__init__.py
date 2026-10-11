@@ -219,6 +219,7 @@ class PlanResult(BaseModel):
     score_breakdown: ScoreBreakdown
     machine_option: Optional[MachineOption] = None
     straw_outlet_option: Optional[StrawOutletOption] = None
+    straw_outlets: Optional[list[dict]] = None
     reason_text: str
     tool_trace: list[ToolTraceEntry]
     seven_day_scores: list[DayScore]

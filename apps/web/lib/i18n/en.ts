@@ -68,6 +68,13 @@ export const en = {
     smokeKeptOut: "You kept {amount} kg of smoke out of Delhi's air this season.",
     acresTonnes: '{acres} acres • {tonnes} t straw',
     impactStats: '{pm25} kg PM2.5 • {co2} t CO₂ (est.)',
+    preferToSellStraw: 'Prefer to sell your straw?',
+    browseAllOutlets: 'Browse All Outlets',
+    topRanked: 'Top 3 Ranked',
+    recommended: 'Recommended',
+    pickupAvailable: 'Pickup Available',
+    dropoffOnly: 'Drop-off Only',
+    pickupOnRequest: 'Pickup on Request',
   },
   citizen: {
     dashboard: 'Citizen Dashboard',
@@ -145,6 +152,9 @@ export const en = {
     catGarbageBurning: 'Garbage burning',
     catCrackerBurning: 'Firecrackers',
     catConstructionDust: 'Construction dust',
+    similarReportsMerged: '{count} similar reports merged',
+    needsReviewBadge: 'Needs review',
+    youBadge: 'You',
   },
 };
 

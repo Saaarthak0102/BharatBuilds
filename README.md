@@ -98,8 +98,10 @@ All sample data is marked with `is_sample: true` and displayed with a visible "S
 - **Infrastructure:** AWS SAM, API Gateway, DynamoDB, S3, Cognito, SNS, EventBridge
 - **AI/ML:** Amazon Bedrock (Claude 3 Sonnet), Bedrock Guardrails
 
-## Credits
+## Credits & Attribution
 
+- **Sample Data**: All sample reports, straw outlets, and machine slots are strictly fictional demonstration data. No real entities, phone numbers, or vehicle plates are referenced.
+- **Sample Images**: Illustrative images in `apps/web/public/sample-reports/` are AI-generated illustrations for demo verification.
 - [Next.js](https://nextjs.org/) — MIT License
 - [Tailwind CSS](https://tailwindcss.com/) — MIT License
 - [GSAP](https://gsap.com/) — Standard GSAP License (free for non-commercial)
