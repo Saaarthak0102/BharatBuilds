@@ -1,6 +1,10 @@
+'use client';
+
+import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth/useSession";
 
 export interface LogoProps {
   size?: number;
@@ -15,9 +19,30 @@ export function Logo({
   withWordmark = false,
   className,
   priority = false,
-  href,
+  href = "/",
 }: LogoProps) {
+  const { session } = useSession();
   const borderRadius = Math.round(size * 0.22);
+  const [resolvedHref, setResolvedHref] = React.useState(href);
+
+  React.useEffect(() => {
+    let dashboardPath: string | null = null;
+    if (session?.role === 'farmer') {
+      dashboardPath = '/farmer';
+    } else if (session?.role === 'citizen') {
+      dashboardPath = '/citizen';
+    } else if (typeof window !== 'undefined') {
+      const demoRole = localStorage.getItem('saans_demo');
+      if (demoRole === 'farmer') dashboardPath = '/farmer';
+      else if (demoRole === 'citizen') dashboardPath = '/citizen';
+    }
+
+    if (dashboardPath && (href === '/' || !href)) {
+      setResolvedHref(dashboardPath);
+    } else {
+      setResolvedHref(href || '/');
+    }
+  }, [session, href]);
 
   const content = (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
@@ -47,13 +72,9 @@ export function Logo({
     </span>
   );
 
-  if (href) {
-    return (
-      <Link href={href} aria-label="Saans home" className="inline-flex items-center">
-        {content}
-      </Link>
-    );
-  }
-
-  return content;
+  return (
+    <Link href={resolvedHref} aria-label="Saans home" className="inline-flex items-center cursor-pointer">
+      {content}
+    </Link>
+  );
 }

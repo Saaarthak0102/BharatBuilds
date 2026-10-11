@@ -20,19 +20,25 @@ export function TLCard() {
   }, []);
 
   return (
-    <HeroFloatCard accent="emerald" tilt="left" className="w-[200px]">
-      <div className="absolute top-0 right-4 -translate-y-1/2 z-10">
-        <Chip className="bg-[var(--emerald)] text-white font-bold border-none shadow-[0_4px_12px_rgba(16,185,129,0.3)] px-3 py-0.5 text-[10px]">
-          {dateInfo.weekday || '—'}
-        </Chip>
+    <HeroFloatCard accent="emerald" tilt="left" className="w-[210px]">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-semibold">
+          Best day to clear
+        </div>
+        <span className="px-2 py-0.5 rounded-full bg-[var(--emerald)]/20 border border-[var(--emerald)]/40 text-[var(--emerald)] font-bold text-[10px] tracking-wider shrink-0">
+          {dateInfo.weekday || 'TUE'}
+        </span>
       </div>
-      <div className="flex items-center justify-between mb-1">
-        <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-medium">Best day to clear</div>
-        <SampleDataBadge className="text-[9px] py-0 px-1.5" />
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <div className="font-serif italic text-5xl text-[var(--text-hi)] leading-none">{dateInfo.day || '—'}</div>
-        <div className="text-sm text-[var(--emerald)] uppercase font-bold tracking-wider">{dateInfo.month || '—'}</div>
+      <div className="flex items-baseline gap-2">
+        <div className="font-serif italic text-5xl text-[var(--text-hi)] leading-none">
+          {dateInfo.day || '—'}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm text-[var(--emerald)] uppercase font-bold tracking-wider leading-none">
+            {dateInfo.month || '—'}
+          </span>
+          <span className="text-[9px] text-[var(--text-mid)] mt-0.5 font-medium">Optimal Window</span>
+        </div>
       </div>
     </HeroFloatCard>
   );
