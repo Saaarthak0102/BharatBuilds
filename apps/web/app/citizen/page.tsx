@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
 import { IconTile } from '@/components/ui/IconTile';
@@ -13,8 +14,9 @@ import { AgentLogAccordion, ToolTraceItem } from '@/components/dashboard/AgentLo
 import { EmergencyFeelingHeavyModal } from '@/components/dashboard/EmergencyFeelingHeavyModal';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
-import { TodayResponse } from '@/lib/types';
+import { TodayResponse, CitizenProfile } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
+import { formatKolkataDate, formatKolkataTime } from '@/lib/date';
 import {
   MOCK_WEATHER_CITIZEN,
   FULL_WEATHER_CITIZEN,
@@ -39,6 +41,9 @@ import {
 export default function CitizenDashboard() {
   const { t } = useT();
   const [today, setToday] = useState<TodayResponse | null>(null);
+  const [profile, setProfile] = useState<CitizenProfile | null>(null);
+  const [reports, setReports] = useState<any[]>([]);
+  const [isSampleReports, setIsSampleReports] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
@@ -59,17 +64,48 @@ export default function CitizenDashboard() {
   const regionalImpact = getCitizenRegionalImpact();
 
   useEffect(() => {
+    let mounted = true;
     async function loadData() {
       try {
-        const res = await apiClient.citizen.today('ward-east-delhi-001');
-        setToday(res.data);
+        const profileRes = await apiClient.citizen.getProfile().catch(() => ({ data: null }));
+        const prof = profileRes?.data || null;
+        if (mounted) setProfile(prof);
+
+        const areaId = prof?.area_id || 'ward-east-delhi-001';
+
+        const [todayRes, reportsRes] = await Promise.allSettled([
+          apiClient.citizen.today(areaId),
+          apiClient.reports.get(),
+        ]);
+
+        if (mounted) {
+          if (todayRes.status === 'fulfilled') {
+            setToday(todayRes.value.data);
+          }
+          if (reportsRes.status === 'fulfilled') {
+            const rData = reportsRes.value.data;
+            const fetchedReports = rData?.reports || [];
+            if (fetchedReports.length > 0) {
+              setReports(fetchedReports);
+              setIsSampleReports(Boolean(rData?.is_sample));
+            } else {
+              setReports([]);
+              setIsSampleReports(false);
+            }
+          }
+        }
       } catch (err) {
-        console.error('Failed to load today data', err);
+        console.error('Failed to load citizen today data', err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
     loadData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Fact rotation effect: every 9 seconds with fade, paused on hover
@@ -95,14 +131,45 @@ export default function CitizenDashboard() {
     return 'var(--cyan)';
   };
 
-  const reportListItems: RecentListItem[] = MOCK_RECENT_REPORTS.map((r) => ({
-    id: r.id,
-    title: r.category,
-    subtitle: `${r.location} • ${r.time}`,
-    status: r.status,
-    statusType: r.status.toLowerCase().replace(/\s+/g, '_') as any,
-    icon: <LuCamera className="w-3.5 h-3.5 text-amber-400" />,
-  }));
+  const areaName = profile?.area_name || today?.area_name || 'East Delhi';
+  const currentDateText = `Today, ${formatKolkataTime(new Date())}`;
+
+  const reportsCount = reports.length;
+  const verifiedCount = reports.filter((r) => {
+    const s = (r.status || '').toLowerCase();
+    return s === 'verified' || s === 'routed';
+  }).length;
+  const actionTakenCount = reports.filter((r) => {
+    const s = (r.status || '').toLowerCase();
+    return s === 'action_taken' || s === 'action taken' || s === 'resolved';
+  }).length;
+
+  const reportListItems: RecentListItem[] = reports.map((r) => {
+    const rawTime = r.created_at || r.time;
+    const formattedTime = rawTime
+      ? formatKolkataDate(rawTime, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : 'Recently';
+    const locText = r.location
+      ? typeof r.location === 'object' && r.location.lat
+        ? `${r.location.lat.toFixed(2)}°N, ${r.location.lng.toFixed(2)}°E`
+        : String(r.location)
+      : areaName;
+
+    return {
+      id: r.report_id || r.id || String(Math.random()),
+      title: (r.category || 'Burning Report').replace(/_/g, ' '),
+      subtitle: `${locText} • ${formattedTime}`,
+      status: (r.status || 'Received').replace(/_/g, ' '),
+      statusType: (r.status || 'received').toLowerCase().replace(/\s+/g, '_') as any,
+      icon: <LuCamera className="w-3.5 h-3.5 text-amber-400" />,
+    };
+  });
 
   const handleToolTracesUpdated = (newTraces: ToolTraceItem[]) => {
     setCitizenToolTraces((prev) => [...prev, ...newTraces]);
@@ -142,7 +209,7 @@ export default function CitizenDashboard() {
               
               <div className="relative z-10 flex flex-col items-center text-center py-8">
                 <Chip className="bg-[var(--cyan)]/10 text-[var(--cyan)] border-[var(--cyan)]/20 mb-8 px-4 py-1">
-                  East Delhi
+                  {areaName}
                 </Chip>
                 
                 {/* Huge AQI Display */}
@@ -177,7 +244,9 @@ export default function CitizenDashboard() {
                 <div>
                   <h3 className="font-semibold text-[var(--text-hi)] mb-1">Wind & Forecast</h3>
                   <p className="text-sm text-[var(--text-mid)]">
-                    Winds are currently blowing from the northwest at 12km/h, bringing residual smoke into the NCR basin.
+                    {today?.wind
+                      ? `Winds are currently blowing from the ${today.wind.direction || 'northwest'} at ${today.wind.speed_kmh || 12}km/h${today.smoke_drift_note ? `, ${today.smoke_drift_note.toLowerCase()}` : '.'}`
+                      : 'Winds are currently blowing from the northwest at 12km/h, bringing residual smoke into the NCR basin.'}
                   </p>
                 </div>
               </div>
@@ -197,27 +266,33 @@ export default function CitizenDashboard() {
           <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
           
           <div className="grid grid-cols-2 gap-4">
-            <GlassCard data-accent="red" className="col-span-2 group interactive-card hover:border-[var(--red)]/50 border-[var(--red)]/20">
-              <h3 className="font-bold text-[var(--red)] group-hover:text-[var(--accent-2)] flex items-center justify-between text-lg mb-2">
-                {t('citizen.reportBurning')}
-                <LuCamera className="w-5 h-5" />
-              </h3>
-              <p className="text-sm text-[var(--text-mid)]">{t('citizen.reportBurningDesc')}</p>
-            </GlassCard>
+            <Link href="/citizen/report" className="col-span-2 block">
+              <GlassCard data-accent="red" className="group interactive-card hover:border-[var(--red)]/50 border-[var(--red)]/20">
+                <h3 className="font-bold text-[var(--red)] group-hover:text-[var(--accent-2)] flex items-center justify-between text-lg mb-2">
+                  {t('citizen.reportBurning')}
+                  <LuCamera className="w-5 h-5" />
+                </h3>
+                <p className="text-sm text-[var(--text-mid)]">{t('citizen.reportBurningDesc')}</p>
+              </GlassCard>
+            </Link>
             
-            <IconTile 
-              data-accent="violet"
-              icon={<LuMapPin className="w-6 h-6" />}
-              label={t('citizen.mapView')}
-              className="hover:border-[var(--violet)]/50"
-            />
+            <Link href="/map" className="block h-full">
+              <IconTile 
+                data-accent="violet"
+                icon={<LuMapPin className="w-6 h-6" />}
+                label={t('citizen.mapView')}
+                className="hover:border-[var(--violet)]/50"
+              />
+            </Link>
             
-            <IconTile 
-              data-accent="cyan"
-              icon={<LuBell className="w-6 h-6" />}
-              label={t('citizen.alertSettings')}
-              className="hover:border-[var(--cyan)]/50"
-            />
+            <Link href="/profile" className="block h-full">
+              <IconTile 
+                data-accent="cyan"
+                icon={<LuBell className="w-6 h-6" />}
+                label={t('citizen.alertSettings')}
+                className="hover:border-[var(--cyan)]/50"
+              />
+            </Link>
 
             {/* Mobile "Feeling heavy?" emergency button */}
             <button
@@ -260,8 +335,8 @@ export default function CitizenDashboard() {
                   <WeatherPanel
                     weather={FULL_WEATHER_CITIZEN}
                     title={t('citizen.today')}
-                    location={t('citizen.location')}
-                    dateText="Today, 10:15 AM"
+                    location={areaName}
+                    dateText={currentDateText}
                     isSample={today?.is_sample ?? true}
                     accent="cyan"
                   />
@@ -299,9 +374,15 @@ export default function CitizenDashboard() {
                           'Sensitive groups should reduce prolonged outdoor exertion. Everyone else should limit heavy outdoor activity.'}
                       </p>
                       <div className="text-[11px] lg:text-[clamp(0.7rem,1.5vh,0.85rem)] text-[var(--text-low)] mt-2 lg:mt-3 flex items-center gap-2">
-                        <span>NW wind 12 km/h</span>
+                        <span>
+                          {today?.wind
+                            ? `${today.wind.direction} wind ${today.wind.speed_kmh} km/h`
+                            : 'NW wind 12 km/h'}
+                        </span>
                         <span>•</span>
-                        <span className="truncate">Residual agricultural smoke in basin</span>
+                        <span className="truncate">
+                          {today?.smoke_drift_note || 'Residual agricultural smoke in basin'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -312,6 +393,7 @@ export default function CitizenDashboard() {
                     <MiniStatCard
                       label={t('citizen.burningStoppedToday')}
                       accent="emerald"
+                      badge="est."
                       icon={<LuFlame className="w-3.5 h-3.5 text-[var(--emerald)]" />}
                       value={`${regionalImpact.fieldsNotBurnedToday} fields`}
                       caption={`${regionalImpact.strawDivertedTodayTonnes} t stubble diverted`}
@@ -355,6 +437,7 @@ export default function CitizenDashboard() {
                     <MiniStatCard
                       label={t('citizen.bestTimeOutside')}
                       accent="blue"
+                      badge="est."
                       icon={<LuClock className="w-3.5 h-3.5 text-cyan-400" />}
                       value="1:30 PM – 4:00 PM"
                       caption="Cleanest daylight window (AQI ~140)"
@@ -384,23 +467,31 @@ export default function CitizenDashboard() {
                 >
                   <div className="flex flex-col flex-1 justify-between min-h-0 mt-3 sm:mt-4">
                     {/* NEW compact quick upload strip */}
-                    <button className="shrink-0 h-[56px] sm:h-[64px] lg:h-[72px] rounded-xl border-2 border-dashed border-[var(--border-strong)] hover:border-[var(--amber)]/50 bg-[var(--bg-2)] flex items-center justify-center gap-3 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors group mb-3 sm:mb-4">
-                      <LuCamera className="w-5 h-5 text-amber-500/70 group-hover:text-amber-400" />
-                      <span className="text-xs sm:text-sm font-medium">Tap to snap and upload a photo, location is auto-tagged</span>
-                    </button>
+                    <Link href="/citizen/report" className="shrink-0 block mb-3 sm:mb-4">
+                      <div className="h-[56px] sm:h-[64px] lg:h-[72px] rounded-xl border-2 border-dashed border-[var(--border-strong)] hover:border-[var(--amber)]/50 bg-[var(--bg-2)] flex items-center justify-center gap-3 text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors group cursor-pointer">
+                        <LuCamera className="w-5 h-5 text-amber-500/70 group-hover:text-amber-400" />
+                        <span className="text-xs sm:text-sm font-medium">Tap to snap and upload a photo, location is auto-tagged</span>
+                      </div>
+                    </Link>
 
                     {/* NEW stats row chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">Reports: 3</span>
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Verified: 2</span>
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Action taken: 1</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
+                        Reports: {reportsCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        Verified: {verifiedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Action taken: {actionTakenCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                      </span>
                     </div>
 
                     <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
                       <RecentList
                         title={t('citizen.recentReports')}
                         items={reportListItems}
-                        totalCount={MOCK_RECENT_REPORTS.length}
+                        totalCount={reportsCount}
                         emptyText={t('citizen.noReports')}
                       />
                     </div>
@@ -409,20 +500,30 @@ export default function CitizenDashboard() {
 
                 {/* 2. Row of two tiles: Map View & Alert Settings */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0 flex-1 min-h-[5.5rem]">
-                  <IconTile
-                    data-accent="violet"
-                    icon={<LuMapPin className="w-5 h-5 text-[var(--violet)]" />}
-                    label={t('citizen.mapView')}
-                    sublabel="Delhi NCR & Fires"
-                    className="hover:border-[var(--violet)]/50 p-4"
-                  />
-                  <IconTile
-                    data-accent="cyan"
-                    icon={<LuBell className="w-5 h-5 text-[var(--cyan)]" />}
-                    label={t('citizen.alertSettings')}
-                    sublabel="Threshold 200 AQI"
-                    className="hover:border-[var(--cyan)]/50 p-4"
-                  />
+                  <Link href="/map" className="block h-full">
+                    <IconTile
+                      data-accent="violet"
+                      icon={<LuMapPin className="w-5 h-5 text-[var(--violet)]" />}
+                      label={t('citizen.mapView')}
+                      sublabel="Delhi NCR & Fires"
+                      className="hover:border-[var(--violet)]/50 p-4"
+                    />
+                  </Link>
+                  <Link href="/profile" className="block h-full">
+                    <IconTile
+                      data-accent="cyan"
+                      icon={<LuBell className="w-5 h-5 text-[var(--cyan)]" />}
+                      label={t('citizen.alertSettings')}
+                      sublabel={
+                        profile?.alert_threshold
+                          ? `Threshold ${profile.alert_threshold} AQI`
+                          : profile?.alert_opt_in === false
+                          ? 'Alerts off'
+                          : 'Threshold 200 AQI'
+                      }
+                      className="hover:border-[var(--cyan)]/50 p-4"
+                    />
+                  </Link>
                 </div>
 
                 {/* 3. NEW: Emergency Card "Feeling heavy?" (red/amber accent, distinct) */}

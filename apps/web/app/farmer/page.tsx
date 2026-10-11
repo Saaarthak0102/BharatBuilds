@@ -13,8 +13,9 @@ import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
-import { PlanResult } from '@/lib/types';
+import { PlanResult, FarmerProfile } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
+import { formatKolkataDate } from '@/lib/date';
 import {
   MOCK_WEATHER_FARMER,
   FULL_WEATHER_FARMER,
@@ -37,6 +38,9 @@ import {
 export default function FarmerDashboard() {
   const { t } = useT();
   const [plan, setPlan] = useState<PlanResult | null>(null);
+  const [profile, setProfile] = useState<FarmerProfile | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isSampleBookings, setIsSampleBookings] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Computed data from actions-to-earnings and impact engine
@@ -44,29 +48,89 @@ export default function FarmerDashboard() {
   const impactData = calculateFarmerImpact();
 
   useEffect(() => {
+    let mounted = true;
     async function loadData() {
       try {
-        const res = await apiClient.farmer.plan({
-          village_id: 'village-patiala-001',
-          crop_stage: 'harvested',
-          language: 'en',
-        });
-        setPlan(res.data);
+        const profileRes = await apiClient.farmer.getProfile().catch(() => ({ data: null }));
+        const prof = profileRes?.data || null;
+        if (mounted) setProfile(prof);
+
+        const villageId = prof?.village_id || 'village-patiala-001';
+        const cropStage = prof?.crop_stage || 'harvested';
+        const lang = prof?.language || 'en';
+
+        const [planRes, bookingsRes] = await Promise.allSettled([
+          apiClient.farmer.plan({
+            village_id: villageId,
+            crop_stage: cropStage,
+            language: lang,
+          }),
+          apiClient.farmer.getBookings(),
+        ]);
+
+        if (mounted) {
+          if (planRes.status === 'fulfilled') {
+            setPlan(planRes.value.data);
+          }
+          if (bookingsRes.status === 'fulfilled') {
+            const bData = bookingsRes.value.data;
+            const fetchedBookings = bData?.bookings || [];
+            if (fetchedBookings.length > 0) {
+              setBookings(fetchedBookings);
+              setIsSampleBookings(Boolean(bData?.is_sample));
+            } else {
+              // If user has no bookings, start with clean real empty array
+              setBookings([]);
+              setIsSampleBookings(false);
+            }
+          }
+        }
       } catch (err) {
-        console.error('Failed to load plan', err);
+        console.error('Failed to load farmer dashboard data', err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
     loadData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const bookingListItems: RecentListItem[] = MOCK_RECENT_BOOKINGS.map((b) => ({
-    id: b.id,
-    title: b.machineName,
-    subtitle: `${b.dateSlot} • ${b.centre}`,
-    status: b.status,
-    statusType: b.status.toLowerCase() as any,
+  const locationText = profile?.village_name
+    ? `${profile.village_name}, ${profile.district || 'Punjab'}`
+    : t('farmer.location');
+  const currentDateText = formatKolkataDate(new Date(), {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const bookingsCount = bookings.length;
+  const completedCount = bookings.filter(
+    (b) => (b.status || '').toLowerCase() === 'completed'
+  ).length;
+  const upcomingCount = bookings.filter((b) => {
+    const s = (b.status || '').toLowerCase();
+    return s === 'pending' || s === 'confirmed' || s === 'upcoming';
+  }).length;
+
+  const bookingListItems: RecentListItem[] = bookings.map((b) => ({
+    id: b.booking_id || b.id || String(Math.random()),
+    title: b.machine_type || b.machineName || 'Happy Seeder',
+    subtitle: `${
+      b.date
+        ? formatKolkataDate(b.date, { month: 'short', day: 'numeric' })
+        : b.dateSlot || 'Slot booked'
+    } • ${
+      b.owner_label ||
+      b.centre ||
+      (profile?.village_name ? `${profile.village_name} Centre` : 'Kisan Seva Kendra')
+    }`,
+    status: b.status || 'CONFIRMED',
+    statusType: (b.status || 'confirmed').toLowerCase() as any,
     icon: <LuTractor className="w-3.5 h-3.5 text-[var(--emerald)]" />,
   }));
 
@@ -99,24 +163,38 @@ export default function FarmerDashboard() {
                 </Chip>
                 
                 <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)] mb-6">
-                  {plan?.best_day ? new Date(plan.best_day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : 'N/A'}
+                  {plan?.best_day ? formatKolkataDate(plan.best_day, { weekday: 'long', month: 'short', day: 'numeric' }) : currentDateText}
                 </div>
                 
                 <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-8">
                   {plan?.reason_text}
                 </p>
                 
-                {plan?.machine_option && (
+                {plan?.machine_option ? (
                   <div className="flex items-center gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)]">
                     <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
                       <LuTractor />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-[var(--text-hi)]">{plan.machine_option.machine_type} Available</h3>
+                      <h3 className="font-semibold text-[var(--text-hi)]">
+                        {plan.machine_option.machine_type} Available{plan.machine_option.is_sample ? ' (SAMPLE)' : ''}
+                      </h3>
                       <p className="text-sm text-[var(--text-mid)]">{plan.machine_option.owner_label}</p>
                     </div>
                   </div>
-                )}
+                ) : plan?.straw_outlet_option ? (
+                  <div className="flex items-center gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)]">
+                    <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
+                      <LuMap />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[var(--text-hi)]">
+                        {plan.straw_outlet_option.name} (Outlet)
+                      </h3>
+                      <p className="text-sm text-[var(--text-mid)]">{plan.straw_outlet_option.contact_hint}</p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </GlassCard>
 
@@ -191,8 +269,8 @@ export default function FarmerDashboard() {
                   <WeatherPanel
                     weather={FULL_WEATHER_FARMER}
                     title={t('farmer.myField')}
-                    location={t('farmer.location')}
-                    dateText="Tuesday, Nov 5"
+                    location={locationText}
+                    dateText={currentDateText}
                     isSample={plan?.is_sample ?? true}
                     accent="emerald"
                   />
@@ -204,17 +282,19 @@ export default function FarmerDashboard() {
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] animate-pulse" />
                         {t('farmer.bestDay')}
                       </span>
-                      <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">Score 82/100</span>
+                      <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">
+                        Score {plan?.score != null ? plan.score : 82}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
+                      </span>
                     </div>
 
                     <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
                       {plan?.best_day
-                        ? new Date(plan.best_day).toLocaleDateString(undefined, {
+                        ? formatKolkataDate(plan.best_day, {
                             weekday: 'long',
                             month: 'short',
                             day: 'numeric',
                           })
-                        : 'Tuesday, Nov 5'}
+                        : currentDateText}
                     </div>
 
                     <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-3 leading-relaxed mt-1 lg:mt-2">
@@ -229,15 +309,24 @@ export default function FarmerDashboard() {
                     <MiniStatCard
                       label={t('farmer.machineAvailability')}
                       accent="emerald"
+                      badge={plan?.is_sample ? 'SAMPLE' : (!plan?.machine_option ? 'est.' : undefined)}
                       icon={<LuTractor className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                      value="Happy Seeder"
-                      caption="Kisan Seva Kendra, Patiala"
+                      value={plan?.machine_option?.machine_type || (plan?.straw_outlet_option ? 'Straw Outlet' : 'Happy Seeder')}
+                      caption={
+                        plan?.machine_option?.owner_label ||
+                        (plan?.straw_outlet_option
+                          ? plan.straw_outlet_option.name
+                          : profile?.village_name
+                          ? `${profile.village_name}, ${profile.district || 'Punjab'}`
+                          : 'Kisan Seva Kendra, Patiala')
+                      }
                     />
 
                     {/* 2. My Earnings So Far */}
                     <MiniStatCard
                       label={t('farmer.earningsSoFar')}
                       accent="amber"
+                      badge="est."
                       icon={<LuIndianRupee className="w-3.5 h-3.5 text-amber-400" />}
                       value={earningsData.formattedTotal}
                       caption={`from ${earningsData.actionCount} verified actions`}
@@ -247,6 +336,7 @@ export default function FarmerDashboard() {
                     <MiniStatCard
                       label={t('farmer.burningAvoided')}
                       accent="emerald"
+                      badge="est."
                       icon={<LuShieldCheck className="w-3.5 h-3.5 text-[var(--emerald)]" />}
                       value={`${impactData.acresAvoided} acres`}
                       caption={`${impactData.tonnesStrawDiverted} t straw diverted`}
@@ -291,8 +381,24 @@ export default function FarmerDashboard() {
                           <LuTractor className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate">Happy Seeder</h4>
-                          <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">Kisan Seva Kendra (4 km) • Tomorrow, 9 AM</p>
+                          <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate">
+                            {plan?.machine_option?.machine_type || 'Happy Seeder'}
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">
+                            {plan?.machine_option
+                              ? `${plan.machine_option.owner_label} • ${
+                                  plan.best_day
+                                    ? formatKolkataDate(plan.best_day, {
+                                        weekday: 'short',
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
+                                    : 'Available'
+                                }${plan.machine_option.is_sample ? ' (SAMPLE)' : ''}`
+                              : `${
+                                  profile?.village_name ? `${profile.village_name} Hub` : 'Kisan Seva Kendra'
+                                } (4 km) • Tomorrow, 9 AM (est.)`}
+                          </p>
                         </div>
                       </div>
                       <Link href="/farmer/book" className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center">
@@ -302,16 +408,22 @@ export default function FarmerDashboard() {
 
                     {/* NEW stats row chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">Bookings: 8</span>
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Completed: 7</span>
-                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Upcoming: 1</span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
+                        Bookings: {bookingsCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Completed: {completedCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        Upcoming: {upcomingCount}{isSampleBookings ? ' (SAMPLE)' : ''}
+                      </span>
                     </div>
 
                     <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
                       <RecentList
                         title={t('farmer.recentBookings')}
                         items={bookingListItems}
-                        totalCount={MOCK_RECENT_BOOKINGS.length}
+                        totalCount={bookingsCount}
                         emptyText={t('farmer.noBookings')}
                       />
                     </div>
@@ -325,7 +437,7 @@ export default function FarmerDashboard() {
                       data-accent="emerald"
                       icon={<LuMap className="w-5 h-5 text-[var(--emerald)]" />}
                       label={t('farmer.strawOutlets')}
-                      sublabel="Patiala Hub"
+                      sublabel={profile?.district ? `${profile.district} Hub` : 'Patiala Hub'}
                       className="hover:border-[var(--emerald)]/50 p-4"
                     />
                   </Link>

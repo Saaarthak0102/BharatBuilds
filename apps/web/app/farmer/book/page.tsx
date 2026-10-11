@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api/client';
 import { LuArrowLeft, LuTractor, LuCheck, LuInfo, LuMap } from 'react-icons/lu';
 import { useT } from '@/lib/i18n/useT';
 import { FarmerProfile, PlanResult } from '@/lib/types';
+import { formatKolkataDate, getKolkataISODate } from '@/lib/date';
 
 function BookAgentFlow() {
   const router = useRouter();
@@ -41,14 +42,9 @@ function BookAgentFlow() {
   useEffect(() => {
     apiClient.farmer.getProfile().then(res => {
       setProfile(res.data);
-      // set defaults
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      
-      setStartDate(tomorrow.toISOString().split('T')[0]);
-      setEndDate(nextWeek.toISOString().split('T')[0]);
+      // set defaults in Asia/Kolkata timezone
+      setStartDate(getKolkataISODate(1));
+      setEndDate(getKolkataISODate(7));
     }).catch(err => {
       console.error(err);
       setGeneralError("Could not load profile. Please try again.");
@@ -194,7 +190,7 @@ function BookAgentFlow() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Date</div>
-                    <div className="text-sm text-[var(--text-hi)]">{new Date(urlDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                    <div className="text-sm text-[var(--text-hi)]">{formatKolkataDate(urlDate, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Location</div>
@@ -325,11 +321,11 @@ function BookAgentFlow() {
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
                       <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Date</div>
-                      <div className="text-sm text-[var(--text-hi)]">{new Date(planResult.machine_option.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                      <div className="text-sm text-[var(--text-hi)]">{formatKolkataDate(planResult.machine_option.date, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Price</div>
-                      <div className="text-sm text-[var(--text-hi)]">Standard rates</div>
+                      <div className="text-sm text-[var(--text-hi)]">Standard rates (est.)</div>
                     </div>
                   </div>
                </div>

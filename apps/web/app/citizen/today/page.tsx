@@ -184,13 +184,13 @@ export default function CitizenTodayPage() {
   // Construct WeatherStrip data matching WeatherStripData shape
   const weatherStripData: WeatherStripData | null = today
     ? {
-        temperature: '24°C',
+        temperature: '24°C (est.)',
         condition: 'Residual Smoke',
         conditionIcon: 'haze',
         windSpeed: `${today.wind?.speed_kmh || 12} km/h`,
         windDirection: today.wind?.direction || 'NW',
-        humidity: '58%',
-        rainChance: '10%',
+        humidity: '58% (est.)',
+        rainChance: '10% (est.)',
         aqiValue: today.aqi,
         aqiCategory: today.aqi_category,
       }

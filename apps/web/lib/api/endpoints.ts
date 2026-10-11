@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   FARMER: {
     PLAN: '/v1/farmer/plan',
     BOOK: '/v1/farmer/book',
+    BOOKINGS: '/v1/farmer/bookings',
     STRAW_OUTLETS: '/v1/farmer/straw-outlets',
   },
   CITIZEN: {

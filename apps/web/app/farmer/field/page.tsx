@@ -10,6 +10,7 @@ import { useT } from '@/lib/i18n/useT';
 import { apiClient } from '@/lib/api/client';
 import { mockVillages } from '@/lib/mock/villages';
 import { PlanResult, FarmerProfile } from '@/lib/types';
+import { formatKolkataDate } from '@/lib/date';
 import { LuArrowLeft, LuTractor, LuMap, LuInfo } from 'react-icons/lu';
 
 export default function FarmerFieldPlanner() {
@@ -199,7 +200,7 @@ export default function FarmerFieldPlanner() {
                   
                   <div className="flex items-end gap-4 mb-6 flex-wrap">
                     <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)]">
-                      {new Date(planResult.best_day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                      {formatKolkataDate(planResult.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}
                     </div>
                     <div className="text-lg font-mono text-[var(--emerald)] mb-1">
                       Score {planResult.score}/100

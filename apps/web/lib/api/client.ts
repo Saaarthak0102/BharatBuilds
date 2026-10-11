@@ -397,6 +397,38 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
     },
+    getBookings: async (): Promise<ApiResponse<{ bookings: any[]; is_sample?: boolean }>> => {
+      if (isMockMode) {
+        return new Promise((resolve) =>
+          resolve({
+            data: {
+              bookings: [
+                {
+                  booking_id: 'bk-101',
+                  machine_type: 'Happy Seeder 7-Row',
+                  owner_label: 'Kisan Seva Kendra, Patiala',
+                  village_id: 'village-patiala-001',
+                  date: '2026-10-12',
+                  status: 'CONFIRMED',
+                  is_sample: true,
+                },
+                {
+                  booking_id: 'bk-102',
+                  machine_type: 'Super SMS Harvester',
+                  owner_label: 'Punjab Agro Hub, Rajpura',
+                  village_id: 'village-patiala-001',
+                  date: '2026-10-15',
+                  status: 'PENDING',
+                  is_sample: true,
+                },
+              ],
+              is_sample: true,
+            },
+          })
+        );
+      }
+      return fetchWithAuth(API_ENDPOINTS.FARMER.BOOKINGS);
+    },
     strawOutlets: async (districtId: string) => {
       if (isMockMode) {
         return new Promise((resolve) =>

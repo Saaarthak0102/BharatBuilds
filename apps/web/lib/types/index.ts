@@ -56,6 +56,7 @@ export interface CitizenProfile extends User {
   area_id: string;
   area_name?: string;
   alert_threshold?: number;
+  alert_opt_in?: boolean;
   has_kids: boolean;
   has_elderly: boolean;
   is_sample: boolean;
