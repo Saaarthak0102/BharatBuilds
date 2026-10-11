@@ -2,4 +2,6 @@
 
 pydantic>=2,<3
 strands-agents
+Pillow>=10.0.0
+pygeohash>=1.2.0
 

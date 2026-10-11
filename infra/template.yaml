@@ -16,6 +16,10 @@ Parameters:
   BedrockVisionModelId:
     Type: String
     Description: Bedrock vision model ID or Inference Profile ID
+  AllowedOrigin:
+    Type: String
+    Default: "*"
+    Description: Allowed origin for CORS
 
 Globals:
   Function:
@@ -538,9 +542,18 @@ Resources:
       FunctionName: !Sub saans-reports-${Stage}
       CodeUri: ../services/
       Handler: api.handlers.reports.handler
+      Environment:
+        Variables:
+          TRIAGE_FUNCTION_NAME: !Ref TriageFunction
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataCacheTable
+        - Statement:
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !GetAtt TriageFunction.Arn
       Events:
         GetReports:
           Type: Api
@@ -560,6 +573,30 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/reports/{id}
             Method: DELETE
+
+  TriageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub saans-triage-${Stage}
+      CodeUri: ../services/
+      Handler: api.handlers.reports_triage.handler
+      Timeout: 30
+      MemorySize: 512
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataCacheTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AgentRunsTable
+        - !Ref AgentBedrockPolicy
+      Events:
+        PostTriage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports/{id}/triage
+            Method: POST
 
   SubscriptionsFunction:
     Type: AWS::Serverless::Function
@@ -699,4 +736,7 @@ Outputs:
   IngestFunction:
     Description: Lambda function ARN for data ingestion
     Value: !GetAtt IngestFunction.Arn
+  TriageFunction:
+    Description: Lambda function ARN for report triage
+    Value: !GetAtt TriageFunction.Arn
 
