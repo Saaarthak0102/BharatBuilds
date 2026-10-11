@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import boto3
 from boto3.dynamodb.conditions import Key
 import pygeohash as pgh
+import os
 
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError, ApiError
@@ -124,6 +125,26 @@ def _submit_report(event, context):
         except boto3.client("dynamodb").exceptions.ConditionalCheckFailedException:
             # Idempotent - return the existing report if it's the same
             pass
+            
+        try:
+            lambda_client = boto3.client("lambda", region_name=config.AWS_REGION)
+            triage_fn = os.environ.get("TRIAGE_FUNCTION_NAME", "saans-dev-TriageFunction")
+            
+            payload = {
+                "report_id": report_id,
+                "category": category,
+                "geohash": geohash,
+                "photo_key": photo_key,
+                "lat": float(lat),
+                "lng": float(lng)
+            }
+            lambda_client.invoke(
+                FunctionName=triage_fn,
+                InvocationType="Event",
+                Payload=json.dumps(payload)
+            )
+        except Exception as e:
+            logger.error("triage_invoke_failed", error=str(e))
 
         return success_response({
             "report_id": report_id,
