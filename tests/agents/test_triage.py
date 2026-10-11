@@ -201,12 +201,7 @@ def test_triage_step_limit_fallback(mock_write, mock_update, agent):
 # 9. Role & Ownership enforcement in handler
 def test_triage_ownership_enforcement(moto_dynamodb):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
-    table = dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": "report_id", "AttributeType": "S"}],
-        BillingMode="PAY_PER_REQUEST"
-    )
+    table = dynamodb.Table(config.REPORTS_TABLE)
 
     # Seed report belonging to user123
     table.put_item(Item={

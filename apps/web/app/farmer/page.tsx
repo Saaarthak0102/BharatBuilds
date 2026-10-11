@@ -305,6 +305,24 @@ export default function FarmerDashboard() {
                       </span>
                     </div>
 
+                    {plan?.sowing_window_status && plan.sowing_window_status !== 'inside' && (
+                      <div className="mb-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                        <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Outside Sowing Window ({plan.sowing_window_status}).</strong> Window: {plan.window_start} to {plan.window_end}.
+                        </div>
+                      </div>
+                    )}
+
+                    {plan?.no_ideal_day && (
+                      <div className="mb-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                        <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>No Ideal Day Found.</strong> Best available day displayed (score: {plan.score}/100).
+                        </div>
+                      </div>
+                    )}
+
                     <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
                       {plan?.best_day
                         ? formatKolkataDate(plan.best_day, {

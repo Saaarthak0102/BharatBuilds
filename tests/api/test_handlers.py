@@ -88,6 +88,7 @@ class TestFarmerPlanEndpoint:
 
     def test_plan_caches_result_and_bypasses_with_force(self, moto_dynamodb):
         """Plan handler caches result in DataCache and bypasses when force=true."""
+        import os
         from services.api.handlers.farmer_plan import handler
         import boto3
         from api.common.config import config
@@ -107,7 +108,8 @@ class TestFarmerPlanEndpoint:
 
         # Directly check DataCache item
         dynamodb = boto3.resource("dynamodb", region_name="ap-south-1")
-        table = dynamodb.Table(config.DATA_CACHE_TABLE)
+        data_cache_name = os.environ.get("DATA_CACHE_TABLE", config.DATA_CACHE_TABLE)
+        table = dynamodb.Table(data_cache_name)
         ist_date_str = today_ist().strftime("%Y-%m-%d")
         cache_key = f"cache-user-1|village-patiala-001|harvested|en|{ist_date_str}"
         cached_item = table.get_item(Key={"source": "plan", "key": cache_key}).get("Item")

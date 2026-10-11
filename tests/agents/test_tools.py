@@ -112,11 +112,15 @@ def test_get_forecast_live_and_stale(dynamo_tables, mock_context):
     
     now = datetime.now(timezone.utc).timestamp()
     
-    # Add a live item
+    # Add a live item covering the window
+    from services.api.common.time import today_ist
+    from decimal import Decimal
+    today = today_ist()
+    live_forecasts = [{"date": (today + timedelta(days=i)).isoformat(), "temp_max_c": Decimal("30.0")} for i in range(7)]
     table.put_item(Item={
         "source": "open_meteo",
         "key": "live_loc",
-        "payload": {"location": "live_loc", "forecasts": []},
+        "payload": {"location": "live_loc", "forecasts": live_forecasts},
         "ttl": int(now + 3600)
     })
     
@@ -124,7 +128,7 @@ def test_get_forecast_live_and_stale(dynamo_tables, mock_context):
     table.put_item(Item={
         "source": "open_meteo",
         "key": "stale_loc",
-        "payload": {"location": "stale_loc", "forecasts": []},
+        "payload": {"location": "stale_loc", "forecasts": live_forecasts},
         "ttl": int(now - 3600)
     })
     

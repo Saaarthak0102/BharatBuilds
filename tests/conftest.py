@@ -187,11 +187,21 @@ def moto_dynamodb():
         os.environ[table["env_var"]] = table["table_name"]
 
     # Sync Config class if already imported
+    for mod_name in ["common.config", "api.common.config", "services.api.common.config"]:
+        if mod_name in sys.modules:
+            mod = sys.modules[mod_name]
+            if hasattr(mod, "Config"):
+                for table in TABLE_DEFINITIONS:
+                    setattr(mod.Config, table["env_var"], table["table_name"])
+            if hasattr(mod, "config"):
+                for table in TABLE_DEFINITIONS:
+                    setattr(mod.config, table["env_var"], table["table_name"])
+
     try:
-        from common.config import Config, config
+        from api.common.config import Config as ApiConfig, config as api_config
         for table in TABLE_DEFINITIONS:
-            setattr(Config, table["env_var"], table["table_name"])
-            setattr(config, table["env_var"], table["table_name"])
+            setattr(ApiConfig, table["env_var"], table["table_name"])
+            setattr(api_config, table["env_var"], table["table_name"])
     except Exception:
         pass
 
@@ -208,6 +218,9 @@ def moto_dynamodb():
             if "global_secondary_indexes" in table:
                 create_params["GlobalSecondaryIndexes"] = table["global_secondary_indexes"]
 
-            dynamodb.create_table(**create_params)
+            try:
+                dynamodb.create_table(**create_params)
+            except Exception:
+                pass
 
         yield dynamodb

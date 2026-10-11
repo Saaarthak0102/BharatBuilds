@@ -1,3 +1,4 @@
+import os
 import time
 import boto3
 from botocore.exceptions import ClientError
@@ -10,8 +11,9 @@ def check_rate_limit(user_id: str, action: str = "default") -> None:
     """
     Atomic per-user-per-day and global-per-day counters using UpdateItem ADD with a condition.
     """
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table(config.DATA_CACHE_TABLE)
+    table_name = os.environ.get("DATA_CACHE_TABLE", config.DATA_CACHE_TABLE)
+    dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
+    table = dynamodb.Table(table_name)
     
     today = today_ist().isoformat()
     

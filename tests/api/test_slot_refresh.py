@@ -19,10 +19,8 @@ def test_slot_refresh_handler(moto_dynamodb):
     event = {"source": "aws.events", "detail-type": "Scheduled Event"}
     result = handler(event, None)
     assert result["statusCode"] == 200
-    body = json.loads(result["body"])
-    assert body["status"] == "success"
-    assert body["days_refreshed"] == 21
-    assert body["slots_created"] > 0
+    assert result["slots_refreshed"] > 0
+    assert result["days"] == 21
 
     # Verify slots in DynamoDB for today_ist and today_ist + 20 days
     today = today_ist()

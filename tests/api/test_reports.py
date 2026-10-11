@@ -51,28 +51,8 @@ def test_classify_foreign_photo_key(mock_event):
 def test_report_idempotency(moto_dynamodb, mock_event):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
     # Setup test table
-    table = dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[
-            {"AttributeName": "report_id", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
-    
-    # We also need DATA_CACHE_TABLE for rate limit mock
-    cache_table = dynamodb.create_table(
-        TableName=config.DATA_CACHE_TABLE,
-        KeySchema=[
-            {"AttributeName": "source", "KeyType": "HASH"},
-            {"AttributeName": "key", "KeyType": "RANGE"}
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "source", "AttributeType": "S"},
-            {"AttributeName": "key", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
+    table = dynamodb.Table(config.REPORTS_TABLE)
+    cache_table = dynamodb.Table(config.DATA_CACHE_TABLE)
 
     mock_event["body"] = json.dumps({
         "photo_key": "reports/user123/img.jpg",
@@ -91,28 +71,6 @@ def test_report_idempotency(moto_dynamodb, mock_event):
 
 def test_report_flood_limit(moto_dynamodb, mock_event):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
-    dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[
-            {"AttributeName": "report_id", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
-    
-    dynamodb.create_table(
-        TableName=config.DATA_CACHE_TABLE,
-        KeySchema=[
-            {"AttributeName": "source", "KeyType": "HASH"},
-            {"AttributeName": "key", "KeyType": "RANGE"}
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "source", "AttributeType": "S"},
-            {"AttributeName": "key", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
-    
     mock_event["body"] = json.dumps({
         "photo_key": "reports/user123/img.jpg",
         "location": {"lat": 28.1, "lng": 77.1},
@@ -133,14 +91,7 @@ def test_report_flood_limit(moto_dynamodb, mock_event):
 
 def test_reports_privacy_get(moto_dynamodb, mock_event):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
-    table = dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[
-            {"AttributeName": "report_id", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
+    table = dynamodb.Table(config.REPORTS_TABLE)
     
     table.put_item(Item={
         "report_id": "test-rpt-1",
@@ -204,14 +155,7 @@ def test_demo_advance_reports_safety_guards(monkeypatch):
 
 def test_get_report_by_id_owner_can_read(moto_dynamodb, mock_event):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
-    table = dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[
-            {"AttributeName": "report_id", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
+    table = dynamodb.Table(config.REPORTS_TABLE)
 
     table.put_item(Item={
         "report_id": "rpt-owner-123",
@@ -257,14 +201,7 @@ def test_get_report_by_id_owner_can_read(moto_dynamodb, mock_event):
 
 def test_get_report_by_id_another_user_gets_404(moto_dynamodb, mock_event):
     dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
-    table = dynamodb.create_table(
-        TableName=config.REPORTS_TABLE,
-        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[
-            {"AttributeName": "report_id", "AttributeType": "S"}
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
+    table = dynamodb.Table(config.REPORTS_TABLE)
 
     table.put_item(Item={
         "report_id": "rpt-owner-123",

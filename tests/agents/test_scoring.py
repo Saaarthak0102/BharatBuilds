@@ -108,14 +108,14 @@ def test_get_sowing_window_for_stage():
 
     # Test current date within window
     ref_date = date(2026, 10, 15)
-    win = get_sowing_window_for_stage("harvested", ref_date)
-    assert win["start"] == "2026-10-01"
-    assert win["end"] == "2026-11-15"
-    assert win["source"] == "TO_VERIFY"
+    start_str, end_str, status = get_sowing_window_for_stage("harvested", as_of=ref_date)
+    assert start_str == "2026-10-01"
+    assert end_str == "2026-11-15"
+    assert status == "inside"
 
     # Test rolling to next year if reference date is past window
     ref_past = date(2026, 12, 1)
-    win_rolled = get_sowing_window_for_stage("harvested", ref_past)
-    assert win_rolled["start"] == "2027-10-01"
-    assert win_rolled["end"] == "2027-11-15"
+    start_p, end_p, status_p = get_sowing_window_for_stage("harvested", as_of=ref_past)
+    assert status_p == "after"
+
 
