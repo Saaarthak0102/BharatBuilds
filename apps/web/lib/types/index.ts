@@ -255,10 +255,13 @@ export interface WeatherResponse {
   today_low: number;
   rain_chance: number;
   uv: number;
+  UV?: number;
   sunset: string;
   wind: {
     speed: number;
     direction: number;
+    speed_kmh?: number;
+    direction_deg?: number;
   };
   humidity: number;
   condition: string;
@@ -267,6 +270,14 @@ export interface WeatherResponse {
   fetched_at: string;
   is_sample: boolean;
   aqi?: number;
+  feels_like?: number;
+  apparent_temperature?: number;
+  visibility?: string | number;
+  high?: number;
+  low?: number;
+  temperature?: number;
+  wind_speed?: number;
+  wind_direction?: number;
 }
 
 export interface FarmerImpact {

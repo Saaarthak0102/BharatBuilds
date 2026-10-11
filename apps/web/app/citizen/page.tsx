@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
 import { IconTile } from '@/components/ui/IconTile';
 import { DashboardLeftCard } from '@/components/dashboard/DashboardLeftCard';
 import { WeatherPanel } from '@/components/dashboard/WeatherPanel';
@@ -67,7 +68,7 @@ function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: numbe
         if (deg < 292.5) return 'W';
         return 'NW';
       })()
-    : String(w.wind?.direction || '—');
+    : String(w.wind?.direction || (w as any).wind_direction || '—');
 
   const hourly = (w.hourly_summary_24h || w.hourly_summary || []).slice(0, 6).map((h) => ({
     time: h.hour || '—',
@@ -85,20 +86,37 @@ function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: numbe
     ? 'haze'
     : 'sun';
 
+  const tempVal = w.current ?? (w as any).temperature;
+  const highVal = w.today_high ?? (w as any).high;
+  const lowVal = w.today_low ?? (w as any).low;
+  const feelsLikeVal = (w as any).feels_like ?? (w as any).apparent_temperature;
+  const visibilityVal = (w as any).visibility ?? (w as any).visibility_km;
+  const windSpeedVal = w.wind?.speed ?? (w as any).wind_speed;
+
+  let sunsetStr = w.sunset || '—';
+  if (sunsetStr && sunsetStr.includes('T')) {
+    try {
+      const d = new Date(sunsetStr);
+      if (!isNaN(d.getTime())) {
+        sunsetStr = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+      }
+    } catch {}
+  }
+
   return {
-    temp: w.current != null ? String(Math.round(w.current)) : '—',
+    temp: tempVal != null ? String(Math.round(tempVal)) : '—',
     condition: w.condition || '—',
     icon,
-    high: w.today_high != null ? String(Math.round(w.today_high)) : '—',
-    low: w.today_low != null ? String(Math.round(w.today_low)) : '—',
-    windSpeed: w.wind?.speed != null ? `${w.wind.speed} km/h` : '—',
+    high: highVal != null ? String(Math.round(highVal)) : '—',
+    low: lowVal != null ? String(Math.round(lowVal)) : '—',
+    windSpeed: windSpeedVal != null ? `${windSpeedVal} km/h` : '—',
     windDir: windDirStr,
     humidity: w.humidity != null ? `${w.humidity}%` : '—',
     rainChance: w.rain_chance != null ? `${w.rain_chance}%` : '—',
     uvIndex: w.uv != null ? String(w.uv) : '—',
-    sunset: w.sunset || '—',
-    feelsLike: (w as any).feels_like != null ? String((w as any).feels_like) : '—',
-    visibility: (w as any).visibility != null ? String((w as any).visibility) : '—',
+    sunset: sunsetStr,
+    feelsLike: feelsLikeVal != null ? `${Math.round(feelsLikeVal)}°C` : '—',
+    visibility: visibilityVal != null ? `${visibilityVal} km` : '—',
     aqi: w.aqi != null ? w.aqi : (aqi != null ? aqi : undefined),
     aqiLabel: 'Moderate',
     hourly,
@@ -121,6 +139,10 @@ export default function CitizenDashboard() {
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
   const [extraToolTraces, setExtraToolTraces] = useState<ToolTraceItem[]>([]);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [todayError, setTodayError] = useState(false);
+  const [weatherError, setWeatherError] = useState(false);
+  const [reportsError, setReportsError] = useState(false);
+  const [isFallbackProfile, setIsFallbackProfile] = useState(false);
 
   // Minute interval for live IST time
   useEffect(() => {
@@ -129,61 +151,87 @@ export default function CitizenDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setTodayError(false);
+    setWeatherError(false);
+    setReportsError(false);
+
+    let prof: CitizenProfile | null = null;
+    let is404Profile = false;
+
+    try {
+      const profileRes = await apiClient.citizen.getProfile();
+      prof = profileRes?.data || null;
+    } catch (err: any) {
+      if (err?.status === 404 || /not found/i.test(err?.message || '')) {
+        is404Profile = true;
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Profile Fallback] getProfile returned 404; continuing with default ward ward-east-delhi-001 with SAMPLE badge');
+        }
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Profile] Failed to fetch citizen profile:', err?.message || err);
+        }
+      }
+    }
+
+    setProfile(prof);
+    setIsFallbackProfile(is404Profile);
+
+    const areaId = prof?.area_id || 'ward-east-delhi-001';
+
+    const [todayRes, weatherRes, reportsRes] = await Promise.allSettled([
+      apiClient.citizen.today(areaId),
+      apiClient.weather(areaId),
+      apiClient.reports.community({ limit: 50 }),
+    ]);
+
+    if (todayRes.status === 'fulfilled') {
+      setToday(todayRes.value.data);
+      setTodayError(false);
+    } else {
+      setToday(null);
+      setTodayError(true);
+    }
+
+    if (weatherRes.status === 'fulfilled') {
+      setWeather(weatherRes.value.data);
+      setWeatherError(false);
+    } else {
+      setWeather(null);
+      setWeatherError(true);
+    }
+
+    if (reportsRes.status === 'fulfilled') {
+      const rData = reportsRes.value.data;
+      const commList = (rData?.reports || []) as CommunityReport[];
+      setCommunityReports(commList);
+      setIsSampleReports(Boolean(rData?.is_sample));
+      setReportsCount(commList.length);
+      setRoutedCount(
+        commList.filter((r) => (r.status || '').toLowerCase() === 'routed').length
+      );
+      setResolvedCount(
+        commList.filter((r) => (r.status || '').toLowerCase() === 'resolved').length
+      );
+      setReportsError(false);
+    } else {
+      setCommunityReports([]);
+      setReportsError(true);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   // Rotating "Did you know?" facts
   const [factIndex, setFactIndex] = useState(0);
   const [isFactPaused, setIsFactPaused] = useState(false);
   const [isFactFading, setIsFactFading] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadData() {
-      try {
-        const profileRes = await apiClient.citizen.getProfile().catch(() => ({ data: null }));
-        const prof = profileRes?.data || null;
-        if (mounted) setProfile(prof);
-
-        const areaId = prof?.area_id || 'ward-east-delhi-001';
-
-        const [todayRes, weatherRes, reportsRes] = await Promise.allSettled([
-          apiClient.citizen.today(areaId),
-          apiClient.weather(areaId),
-          apiClient.reports.community({ limit: 50 }),
-        ]);
-
-        if (mounted) {
-          if (todayRes.status === 'fulfilled') {
-            setToday(todayRes.value.data);
-          }
-          if (weatherRes.status === 'fulfilled') {
-            setWeather(weatherRes.value.data);
-          }
-          if (reportsRes.status === 'fulfilled') {
-            const rData = reportsRes.value.data;
-            const commList = (rData?.reports || []) as CommunityReport[];
-            setCommunityReports(commList);
-            setIsSampleReports(Boolean(rData?.is_sample));
-            setReportsCount(commList.length);
-            setRoutedCount(
-              commList.filter((r) => (r.status || '').toLowerCase() === 'routed').length
-            );
-            setResolvedCount(
-              commList.filter((r) => (r.status || '').toLowerCase() === 'resolved').length
-            );
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load citizen today data', err);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-    loadData();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // Fact rotation effect: every 9 seconds with fade, paused on hover
   useEffect(() => {
@@ -249,12 +297,19 @@ export default function CitizenDashboard() {
       <div className="lg:hidden p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('citizen.today')}</h1>
-          {today?.is_sample && <SampleDataBadge />}
+          {(isFallbackProfile || today?.is_sample) && <SampleDataBadge />}
         </div>
         
         {loading ? (
           <GlassCard className="h-64 flex items-center justify-center">
             <p className="text-[var(--text-mid)] animate-pulse">{t('common.loading')}</p>
+          </GlassCard>
+        ) : todayError ? (
+          <GlassCard className="p-6 text-center space-y-4 border border-[var(--red)]/20">
+            <p className="text-sm text-[var(--text-mid)]">Failed to load air quality data</p>
+            <PillButton variant="accent" onClick={loadData} className="text-xs">
+              Retry
+            </PillButton>
           </GlassCard>
         ) : (
           <>
@@ -393,12 +448,22 @@ export default function CitizenDashboard() {
                     title={t('citizen.today')}
                     location={wardName}
                     dateText={currentDateText}
-                    isSample={weather?.is_sample ?? today?.is_sample ?? false}
+                    isSample={isFallbackProfile || (weather?.is_sample ?? today?.is_sample ?? false)}
                     accent="cyan"
+                    isError={weatherError}
+                    onRetry={loadData}
                   />
                 }
                 heroContent={
-                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto_1fr] items-center gap-6">
+                  todayError ? (
+                    <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-[var(--red)]/20 h-full flex flex-col items-center justify-center text-center gap-3">
+                      <p className="text-sm text-[var(--text-mid)]">Failed to load air quality data</p>
+                      <PillButton variant="accent" onClick={loadData} className="text-xs">
+                        Retry
+                      </PillButton>
+                    </div>
+                  ) : (
+                    <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-[var(--border)] h-full min-h-0 grid grid-cols-[auto_1fr] items-center gap-6">
                     {/* Compact AQI Circular Ring */}
                     <div
                       className="w-[clamp(110px,15vh,150px)] h-[clamp(110px,15vh,150px)] rounded-full border-[6px] lg:border-[8px] flex flex-col items-center justify-center relative shrink-0"
@@ -441,6 +506,7 @@ export default function CitizenDashboard() {
                       </div>
                     </div>
                   </div>
+                )
                 }
                 miniStatsGrid={
                   <div className="grid grid-cols-2 auto-rows-fr gap-3.5 h-full">
@@ -460,8 +526,8 @@ export default function CitizenDashboard() {
                       accent="cyan"
                       badge={isSampleReports ? 'SAMPLE' : undefined}
                       icon={<LuLeaf className="w-3.5 h-3.5 text-[var(--cyan)]" />}
-                      value={`${reportsCount} reports`}
-                      caption={`${routedCount} routed • ${resolvedCount} resolved`}
+                      value={reportsError ? '—' : `${reportsCount} reports`}
+                      caption={reportsError ? 'Failed to load' : `${routedCount} routed • ${resolvedCount} resolved`}
                     />
 
                     {/* 3. Did you know? (Rotating facts with fade & pause on hover) */}
@@ -494,8 +560,8 @@ export default function CitizenDashboard() {
                       accent="blue"
                       badge="est."
                       icon={<LuClock className="w-3.5 h-3.5 text-cyan-400" />}
-                      value="1:30 PM – 4:00 PM"
-                      caption="Cleanest daylight window (AQI ~140)"
+                      value={today ? '1:30 PM – 4:00 PM' : '—'}
+                      caption={today ? 'Cleanest daylight window (AQI ~140)' : 'No data yet'}
                     />
                   </div>
                 }
@@ -532,13 +598,13 @@ export default function CitizenDashboard() {
                     {/* Community counts chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
-                        Reports: {reportsCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Reports: {reportsError ? '—' : reportsCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Routed: {routedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Routed: {reportsError ? '—' : routedCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Resolved: {resolvedCount}{isSampleReports ? ' (SAMPLE)' : ''}
+                        Resolved: {reportsError ? '—' : resolvedCount}{isSampleReports ? ' (SAMPLE)' : ''}
                       </span>
                     </div>
 
@@ -549,10 +615,21 @@ export default function CitizenDashboard() {
                             Recent reports
                           </span>
                           <span className="text-[11px] text-[var(--text-low)]">
-                            {reportsCount} total
+                            {reportsError ? '—' : `${reportsCount} total`}
                           </span>
                         </div>
-                        {communityReports.length === 0 ? (
+                        {reportsError ? (
+                          <div className="py-2 text-center text-xs text-[var(--text-mid)] flex items-center justify-center gap-2">
+                            <span>Failed to load reports</span>
+                            <button
+                              type="button"
+                              onClick={loadData}
+                              className="text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : communityReports.length === 0 ? (
                           <p className="text-xs text-[var(--text-low)] py-1 italic">
                             {t('citizen.noReports')}
                           </p>

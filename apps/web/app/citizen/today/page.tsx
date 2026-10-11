@@ -7,9 +7,9 @@ import { PillButton } from '@/components/ui/PillButton';
 import { WeatherStrip } from '@/components/dashboard/WeatherStrip';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { CitizenBackHeader } from '@/components/citizen/CitizenBackHeader';
-import { getToday, getProfile } from '@/lib/api/client';
+import { getToday, getProfile, getWeather } from '@/lib/api/client';
 import { wards, getWard } from '@/lib/data/reference';
-import { TodayResponse, AQICategory } from '@/lib/types';
+import { TodayResponse, WeatherResponse, AQICategory } from '@/lib/types';
 import { WeatherStripData } from '@/lib/mock/dashboardData';
 import { useT } from '@/lib/i18n/useT';
 import { relativeAgo } from '@/lib/utils/date';
@@ -67,6 +67,7 @@ export default function CitizenTodayPage() {
   const { t } = useT();
   const [selectedAreaId, setSelectedAreaId] = useState<string>('ward-east-delhi-001');
   const [today, setToday] = useState<TodayResponse | null>(null);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
@@ -77,18 +78,22 @@ export default function CitizenTodayPage() {
   useEffect(() => {
     let active = true;
 
-    // Try reading cache immediately to avoid blank screen
+    // Try reading cache immediately to avoid blank screen (guard: must be within last 24h)
     try {
       const cached = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed?.data) {
+        const ts = parsed?.timestamp ? new Date(parsed.timestamp).getTime() : 0;
+        const now = Date.now();
+        if (parsed?.data && ts && now - ts < 24 * 60 * 60 * 1000) {
           setToday(parsed.data);
           setIsCached(true);
           setCachedTime(parsed.timestamp || null);
           if (parsed.data.area_id) {
             setSelectedAreaId(parsed.data.area_id);
           }
+        } else {
+          localStorage.removeItem(LOCAL_STORAGE_CACHE_KEY);
         }
       }
     } catch {
@@ -123,16 +128,20 @@ export default function CitizenTodayPage() {
     setError(null);
 
     try {
-      const res = await getToday(areaId);
-      if (res?.data) {
-        setToday(res.data);
+      const [todayRes, weatherRes] = await Promise.allSettled([
+        getToday(areaId),
+        getWeather(areaId),
+      ]);
+
+      if (todayRes.status === 'fulfilled' && todayRes.value?.data) {
+        setToday(todayRes.value.data);
         setIsCached(false);
         setCachedTime(null);
         try {
           localStorage.setItem(
             LOCAL_STORAGE_CACHE_KEY,
             JSON.stringify({
-              data: res.data,
+              data: todayRes.value.data,
               timestamp: new Date().toISOString(),
             })
           );
@@ -140,20 +149,30 @@ export default function CitizenTodayPage() {
           // Ignore localStorage quota errors
         }
       } else {
-        throw new Error('No data received from service');
+        throw new Error('No air quality data received from service');
+      }
+
+      if (weatherRes.status === 'fulfilled' && weatherRes.value?.data) {
+        setWeather(weatherRes.value.data);
+      } else {
+        setWeather(null);
       }
     } catch (err: any) {
-      // Check if we already have or can fall back to cached data
+      // Check if we already have or can fall back to valid cached data
       try {
         const cached = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed?.data) {
+          const ts = parsed?.timestamp ? new Date(parsed.timestamp).getTime() : 0;
+          const now = Date.now();
+          if (parsed?.data && ts && now - ts < 24 * 60 * 60 * 1000) {
             setToday(parsed.data);
             setIsCached(true);
             setCachedTime(parsed.timestamp || null);
             setError(null);
             return;
+          } else {
+            localStorage.removeItem(LOCAL_STORAGE_CACHE_KEY);
           }
         }
       } catch {
@@ -185,16 +204,54 @@ export default function CitizenTodayPage() {
       : undefined;
   const freshnessLabel = `Updated ${relativeAgo(freshnessTimeStr)}`;
 
-  // Construct WeatherStrip data matching WeatherStripData shape
+  // Construct WeatherStrip data matching WeatherStripData shape from real weather
   const weatherStripData: WeatherStripData | null = today
     ? {
-        temperature: '24°C (est.)',
-        condition: 'Residual Smoke',
-        conditionIcon: 'haze',
-        windSpeed: `${today.wind?.speed_kmh || 12} km/h`,
-        windDirection: today.wind?.direction || 'NW',
-        humidity: '58% (est.)',
-        rainChance: '10% (est.)',
+        temperature:
+          weather?.current != null
+            ? `${Math.round(weather.current)}°C`
+            : (weather as any)?.temperature != null
+            ? `${Math.round((weather as any).temperature)}°C`
+            : '—',
+        condition: weather?.condition || '—',
+        conditionIcon: (weather?.condition || '').toLowerCase().includes('clear')
+          ? 'sun'
+          : (weather?.condition || '').toLowerCase().includes('cloud')
+          ? 'cloud-sun'
+          : (weather?.condition || '').toLowerCase().includes('rain')
+          ? 'wind'
+          : 'haze',
+        windSpeed:
+          weather?.wind?.speed != null
+            ? `${weather.wind.speed} km/h`
+            : (weather as any)?.wind_speed != null
+            ? `${(weather as any).wind_speed} km/h`
+            : today.wind?.speed_kmh
+            ? `${today.wind.speed_kmh} km/h`
+            : '—',
+        windDirection:
+          typeof weather?.wind?.direction === 'number'
+            ? (() => {
+                const deg = weather.wind.direction;
+                if (deg >= 337.5 || deg < 22.5) return 'N';
+                if (deg < 67.5) return 'NE';
+                if (deg < 112.5) return 'E';
+                if (deg < 157.5) return 'SE';
+                if (deg < 202.5) return 'S';
+                if (deg < 247.5) return 'SW';
+                if (deg < 292.5) return 'W';
+                return 'NW';
+              })()
+            : String(
+                weather?.wind?.direction ||
+                  (weather as any)?.wind_direction ||
+                  today.wind?.direction ||
+                  '—'
+              ),
+        humidity:
+          weather?.humidity != null ? `${weather.humidity}%` : '—',
+        rainChance:
+          weather?.rain_chance != null ? `${weather.rain_chance}%` : '—',
         aqiValue: today.aqi,
         aqiCategory: today.aqi_category,
       }

@@ -25,16 +25,10 @@ import type {
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const isNonProd = process.env.NODE_ENV !== 'production';
 
-// Precise mock mode determination
-export const isMockMode =
-  process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-    ? true
-    : process.env.NEXT_PUBLIC_USE_MOCKS === 'false'
-    ? false
-    : process.env.NEXT_PUBLIC_AUTH_MODE === 'cognito'
-    ? false
-    : API_MODE === 'mock';
+// Mock values may only appear when NEXT_PUBLIC_USE_MOCKS=true
+export const isMockMode = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 // In-memory mock store for simulated report lifecycle in mock mode
 interface MockReportEntry {
@@ -62,10 +56,42 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers,
-  });
+  const fullUrl = `${API_BASE_URL}${url}`;
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, {
+      ...options,
+      headers,
+    });
+  } catch (fetchErr: any) {
+    if (isNonProd) {
+      console.warn(`[API] Network error requesting ${url}:`, fetchErr?.message || fetchErr);
+    }
+    throw fetchErr;
+  }
+
+  let responseData: any = null;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    responseData = await response.json().catch(() => null);
+  } else {
+    const text = await response.text().catch(() => '');
+    responseData = text ? { message: text } : null;
+  }
+
+  if (isNonProd) {
+    if (response.status === 200) {
+      console.warn(`[API] ${url} HTTP 200`);
+    } else {
+      const errMsg =
+        responseData?.error?.message ||
+        responseData?.message ||
+        responseData?.error ||
+        JSON.stringify(responseData) ||
+        response.statusText;
+      console.warn(`[API] ${url} HTTP ${response.status}: ${errMsg}`);
+    }
+  }
 
   if (response.status === 401) {
     try {
@@ -76,20 +102,20 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
-    const errorData = await response.json().catch(() => ({}));
-    const err = new Error(errorData?.error?.message || 'Unauthorized');
+    const err = new Error(responseData?.error?.message || responseData?.message || 'Unauthorized');
     (err as any).status = 401;
+    (err as any).data = responseData;
     throw err;
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const err = new Error(errorData?.error?.message || 'API request failed');
+    const err = new Error(responseData?.error?.message || responseData?.message || 'API request failed');
     (err as any).status = response.status;
+    (err as any).data = responseData;
     throw err;
   }
 
-  return response.json();
+  return responseData;
 }
 
 // ─── Standalone Client Functions (Required by Plumbing Spec) ───────────────
@@ -606,6 +632,9 @@ export async function getProfile(): Promise<{
     return { data: null };
   } catch (err: any) {
     if (err?.status === 404 || /not found/i.test(err?.message || '')) {
+      if (isNonProd) {
+        console.warn(`[API] Profile 404: User profile not found, defaulting to fallback village`);
+      }
       return { data: null, isNotFound: true };
     }
     throw err;

@@ -96,3 +96,14 @@ export function relativeAgo(ts: Date | string | number | null | undefined): stri
 export const formatKolkataDate = formatIST;
 export const formatKolkataTime = timeIST;
 export const getKolkataISODate = (offsetDays: number = 0) => addDaysIST(offsetDays);
+
+/**
+ * Validates if date string YYYY-MM-DD is within [todayIST(), addDaysIST(6)].
+ */
+export function isWithinWeekIST(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  const iso = dateStr.slice(0, 10);
+  const start = todayIST();
+  const end = addDaysIST(6);
+  return iso >= start && iso <= end;
+}

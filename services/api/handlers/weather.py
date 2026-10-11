@@ -133,6 +133,7 @@ def handler(event, context):
 
         curr = payload.get("current", {})
         curr_temp = float(curr.get("temperature_c") or curr.get("temperature_2m") or 25.0)
+        apparent_temp = float(curr.get("apparent_temperature_c") or curr.get("apparent_temperature") or curr_temp)
         humidity = int(curr.get("relative_humidity_pct") or curr.get("relative_humidity_2m") or 50)
         weather_code = curr.get("weather_code")
         wind_speed = float(curr.get("wind_speed_kmh") or curr.get("wind_speed_10m") or 10.0)
@@ -147,6 +148,12 @@ def handler(event, context):
         uv = float(today_fc.get("uv_index_max") or today_fc.get("uv_index") or 4.5)
         sunset = str(today_fc.get("sunset") or "18:05")
 
+        vis_raw = payload.get("hourly", {}).get("visibility")
+        if isinstance(vis_raw, list) and len(vis_raw) > 0 and vis_raw[0] is not None:
+            visibility_km = round(float(vis_raw[0]) / 1000.0, 1)
+        else:
+            visibility_km = 10.0
+
         condition_label = map_wmo_code_to_label(weather_code)
 
         hourly_summary = _build_hourly_summary(payload, curr_temp, today_high, today_low, condition_label)
@@ -154,17 +161,31 @@ def handler(event, context):
         result = {
             "location_id": location_id,
             "current": curr_temp,
+            "temperature": curr_temp,
+            "temperature_c": curr_temp,
+            "feels_like": apparent_temp,
+            "apparent_temperature": apparent_temp,
             "today_high": today_high,
             "today_low": today_low,
+            "high": today_high,
+            "low": today_low,
             "rain_chance": rain_chance,
             "uv": uv,
             "UV": uv,
+            "uv_index": uv,
             "sunset": sunset,
             "wind": {
                 "speed": wind_speed,
+                "speed_kmh": wind_speed,
                 "direction": wind_dir,
+                "direction_deg": wind_dir,
             },
+            "wind_speed": wind_speed,
+            "wind_direction": wind_dir,
             "humidity": humidity,
+            "relative_humidity": humidity,
+            "visibility": f"{visibility_km} km",
+            "visibility_km": visibility_km,
             "condition": condition_label,
             "hourly_summary_24h": hourly_summary,
             "hourly_summary": hourly_summary,

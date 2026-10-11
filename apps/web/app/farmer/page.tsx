@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
 import { IconTile } from '@/components/ui/IconTile';
 import { DashboardLeftCard } from '@/components/dashboard/DashboardLeftCard';
 import { WeatherPanel } from '@/components/dashboard/WeatherPanel';
@@ -12,10 +13,10 @@ import { ActionCard } from '@/components/dashboard/ActionCard';
 import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, isMockMode } from '@/lib/api/client';
 import { PlanResult, FarmerProfile, WeatherResponse, FarmerBookingsResponse } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
-import { formatIST, todayIST } from '@/lib/utils/date';
+import { formatIST, todayIST, isWithinWeekIST } from '@/lib/utils/date';
 import { getVillage } from '@/lib/data/reference';
 import { WeatherSnapshot } from '@/lib/mock/dashboardData';
 import {
@@ -27,6 +28,7 @@ import {
   LuIndianRupee,
   LuShieldCheck,
   LuLeaf,
+  LuRefreshCw,
 } from 'react-icons/lu';
 
 function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: number | null): WeatherSnapshot {
@@ -53,7 +55,7 @@ function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: numbe
 
   const windDirStr = typeof w.wind?.direction === 'number'
     ? (() => {
-        const deg = w.wind.direction;
+        const deg = ((w.wind.direction % 360) + 360) % 360;
         if (deg >= 337.5 || deg < 22.5) return 'N';
         if (deg < 67.5) return 'NE';
         if (deg < 112.5) return 'E';
@@ -63,38 +65,67 @@ function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: numbe
         if (deg < 292.5) return 'W';
         return 'NW';
       })()
-    : String(w.wind?.direction || '—');
+    : String((w as any).wind?.direction || (w as any).wind_direction || '—');
 
-  const hourly = (w.hourly_summary_24h || w.hourly_summary || []).slice(0, 6).map((h) => ({
-    time: h.hour || '—',
-    temp: h.temperature != null ? String(Math.round(h.temperature)) : '—',
-    icon: ((h.condition || '').toLowerCase().includes('cloud') ? 'cloud-sun' : 'sun') as 'sun' | 'cloud-sun',
-    rainChance: h.rain_chance != null ? `${Math.round(h.rain_chance)}%` : undefined,
-  }));
+  const rawHourly = w.hourly_summary_24h || w.hourly_summary || [];
+  const hourly = rawHourly.slice(0, 6).map((h) => {
+    const cLower = (h.condition || '').toLowerCase();
+    const hIcon: 'sun' | 'cloud-sun' =
+      cLower.includes('cloud') || cLower.includes('overcast') || cLower.includes('rain')
+        ? 'cloud-sun'
+        : 'sun';
+    const tempVal = h.temperature != null ? h.temperature : h.temperature_c;
+    return {
+      time: h.hour || '—',
+      temp: tempVal != null ? String(Math.round(tempVal)) : '—',
+      icon: hIcon,
+      rainChance: h.rain_chance != null ? `${Math.round(h.rain_chance)}%` : undefined,
+    };
+  });
 
   const conditionLower = (w.condition || '').toLowerCase();
-  const icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon' = conditionLower.includes('cloud')
-    ? 'cloud-sun'
-    : conditionLower.includes('rain')
-    ? 'wind'
-    : conditionLower.includes('fog') || conditionLower.includes('haze')
-    ? 'haze'
-    : 'sun';
+  const icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon' =
+    conditionLower.includes('rain') || conditionLower.includes('drizzle') || conditionLower.includes('storm')
+      ? 'wind'
+      : conditionLower.includes('fog') || conditionLower.includes('haze') || conditionLower.includes('smoke') || conditionLower.includes('mist')
+      ? 'haze'
+      : conditionLower.includes('cloud') || conditionLower.includes('overcast')
+      ? 'cloud-sun'
+      : 'sun';
+
+  const rawFeels = (w as any).feels_like ?? (w as any).apparent_temperature ?? w.current;
+  const feelsLike = rawFeels != null ? String(Math.round(rawFeels)) : '—';
+
+  const rawVis = (w as any).visibility ?? (w as any).visibility_km;
+  const visibility = rawVis != null ? (typeof rawVis === 'number' ? `${rawVis} km` : String(rawVis)) : '10 km';
+
+  let sunsetText = '—';
+  if (w.sunset) {
+    sunsetText = w.sunset.includes('T') ? w.sunset.split('T')[1].slice(0, 5) : w.sunset;
+  }
+
+  const speedVal = w.wind?.speed ?? (w as any).wind?.speed_kmh ?? (w as any).wind_speed;
+  const windSpeedStr = speedVal != null ? `${Math.round(speedVal)} km/h` : '—';
+
+  const currTemp = w.current ?? (w as any).temperature;
+  const highVal = w.today_high ?? (w as any).high;
+  const lowVal = w.today_low ?? (w as any).low;
+  const uvVal = w.uv ?? (w as any).UV ?? (w as any).uv_index;
 
   return {
-    temp: w.current != null ? String(Math.round(w.current)) : '—',
+    temp: currTemp != null ? String(Math.round(currTemp)) : '—',
     condition: w.condition || '—',
     icon,
-    high: w.today_high != null ? String(Math.round(w.today_high)) : '—',
-    low: w.today_low != null ? String(Math.round(w.today_low)) : '—',
-    windSpeed: w.wind?.speed != null ? `${w.wind.speed} km/h` : '—',
+    high: highVal != null ? String(Math.round(highVal)) : '—',
+    low: lowVal != null ? String(Math.round(lowVal)) : '—',
+    windSpeed: windSpeedStr,
     windDir: windDirStr,
     humidity: w.humidity != null ? `${w.humidity}%` : '—',
-    rainChance: w.rain_chance != null ? `${w.rain_chance}%` : '—',
-    uvIndex: w.uv != null ? String(w.uv) : '—',
-    sunset: w.sunset || '—',
-    feelsLike: (w as any).feels_like != null ? String((w as any).feels_like) : '—',
-    visibility: (w as any).visibility != null ? String((w as any).visibility) : '—',
+    rainChance: w.rain_chance != null ? `${Math.round(w.rain_chance)}%` : '—',
+    uvIndex: uvVal != null ? String(uvVal) : '—',
+    sunset: sunsetText,
+    feelsLike,
+    visibility,
     aqi: w.aqi != null ? w.aqi : (aqi != null ? aqi : undefined),
     aqiLabel: 'Moderate',
     hourly,
@@ -104,10 +135,14 @@ function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: numbe
 export default function FarmerDashboard() {
   const { t } = useT();
   const [plan, setPlan] = useState<PlanResult | null>(null);
+  const [planError, setPlanError] = useState<'fetch_error' | 'out_of_week' | 'no_data' | null>(null);
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
+  const [isFallbackProfile, setIsFallbackProfile] = useState(false);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [weatherError, setWeatherError] = useState(false);
   const [bookingsData, setBookingsData] = useState<FarmerBookingsResponse | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingsError, setBookingsError] = useState(false);
   const [isSampleBookings, setIsSampleBookings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentDateText, setCurrentDateText] = useState('');
@@ -122,68 +157,117 @@ export default function FarmerDashboard() {
     );
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    async function loadData() {
-      try {
-        const profileRes = await apiClient.farmer.getProfile().catch(() => ({ data: null }));
-        const prof = profileRes?.data || null;
-        if (mounted) setProfile(prof);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setPlanError(null);
+    setWeatherError(false);
+    setBookingsError(false);
 
-        const villageId = prof?.village_id || 'village-patiala-001';
-        const cropStage = prof?.crop_stage || 'harvested';
-        const lang = prof?.language || 'en';
+    let prof: FarmerProfile | null = null;
+    let is404Profile = false;
 
-        const [planRes, weatherRes, bookingsRes] = await Promise.allSettled([
-          apiClient.farmer.plan({
-            village_id: villageId,
-            crop_stage: cropStage,
-            language: lang,
-          }),
-          apiClient.weather(villageId),
-          apiClient.farmer.getBookings(),
-        ]);
-
-        if (mounted) {
-          if (planRes.status === 'fulfilled') {
-            setPlan(planRes.value.data);
-          }
-          if (weatherRes.status === 'fulfilled') {
-            setWeather(weatherRes.value.data);
-          }
-          if (bookingsRes.status === 'fulfilled') {
-            const bData = bookingsRes.value.data;
-            setBookingsData(bData);
-            const fetchedBookings = bData?.bookings || [];
-            if (fetchedBookings.length > 0) {
-              setBookings(fetchedBookings);
-              setIsSampleBookings(Boolean(bData?.is_sample));
-            } else {
-              setBookings([]);
-              setIsSampleBookings(false);
-            }
-          }
+    try {
+      const profileRes = await apiClient.farmer.getProfile();
+      prof = profileRes?.data || null;
+    } catch (err: any) {
+      if (err?.status === 404 || /not found/i.test(err?.message || '')) {
+        is404Profile = true;
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Profile Fallback] getProfile returned 404; continuing with default Patiala village');
         }
-      } catch (err) {
-        console.error('Failed to load farmer dashboard data', err);
-      } finally {
-        if (mounted) {
-          setLoading(false);
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Profile] Failed to fetch profile:', err?.message || err);
         }
       }
     }
-    loadData();
-    return () => {
-      mounted = false;
-    };
+
+    setProfile(prof);
+    setIsFallbackProfile(is404Profile);
+
+    const villageId = prof?.village_id || 'village-patiala-001';
+    const cropStage = prof?.crop_stage || 'harvested';
+    const lang = prof?.language || 'en';
+
+    const [planRes, weatherRes, bookingsRes] = await Promise.allSettled([
+      apiClient.farmer.plan({
+        village_id: villageId,
+        crop_stage: cropStage,
+        language: lang,
+      }),
+      apiClient.weather(villageId),
+      apiClient.farmer.getBookings(),
+    ]);
+
+    if (planRes.status === 'fulfilled') {
+      const p = planRes.value.data;
+      const bestDayValid = isWithinWeekIST(p?.best_day);
+      const machineDateValid = !p?.machine_option?.date || isWithinWeekIST(p.machine_option.date);
+      if (p && bestDayValid && machineDateValid) {
+        setPlan(p);
+        setPlanError(null);
+      } else {
+        setPlan(null);
+        setPlanError(p ? 'out_of_week' : 'no_data');
+      }
+    } else {
+      setPlan(null);
+      setPlanError('fetch_error');
+    }
+
+    if (weatherRes.status === 'fulfilled') {
+      setWeather(weatherRes.value.data);
+      setWeatherError(false);
+    } else {
+      setWeather(null);
+      setWeatherError(true);
+    }
+
+    if (bookingsRes.status === 'fulfilled') {
+      const bData = bookingsRes.value.data;
+      setBookingsData(bData);
+      const fetchedBookings = bData?.bookings || [];
+      setBookings(fetchedBookings);
+      setIsSampleBookings(Boolean(bData?.is_sample));
+      setBookingsError(false);
+    } else {
+      setBookingsData(null);
+      setBookings([]);
+      setBookingsError(true);
+    }
+
+    setLoading(false);
   }, []);
 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const refVillage = profile?.village_id ? getVillage(profile.village_id) : undefined;
-  const villageName = profile?.village_name || refVillage?.name || 'Village';
+  const villageName = profile?.village_name || refVillage?.name || 'Patiala';
   const districtName = profile?.district || refVillage?.district || 'Punjab';
   const locationText = `${villageName}, ${districtName}`;
 
   const weatherSnapshot = mapWeatherToSnapshot(weather, (plan as any)?.aqi ?? undefined);
+
+  // Week window guard for machine option
+  const isPlanValid = Boolean(plan?.best_day && isWithinWeekIST(plan.best_day));
+  const isMachineValid = Boolean(
+    isPlanValid &&
+    plan?.machine_option &&
+    isWithinWeekIST(plan.machine_option.date)
+  );
+
+  const planReasonMessage = (() => {
+    if (!plan) return '—';
+    let prefix = '';
+    if (plan.sowing_window_status && plan.sowing_window_status !== 'inside') {
+      prefix = `[Outside Recommended Sowing Window (${plan.sowing_window_status})${plan.window_start ? `: ${plan.window_start} to ${plan.window_end}` : ''}] `;
+    } else if (plan.no_ideal_day) {
+      prefix = `[No Ideal Clearing Day Found in Forecast (Score: ${plan.score}/100)] `;
+    }
+    return prefix ? `${prefix}${plan.reason_text}` : (plan.reason_text || '—');
+  })();
 
   const bookingsCount = bookingsData?.status_counts?.TOTAL ?? bookings.length;
   const completedCount = bookingsData?.status_counts?.COMPLETED ?? bookings.filter(
@@ -199,7 +283,7 @@ export default function FarmerDashboard() {
   const impact = bookingsData?.impact;
 
   const villageId = profile?.village_id || 'village-patiala-001';
-  const bookQuery = plan?.machine_option
+  const bookQuery = isMachineValid && plan?.machine_option
     ? `?village=${encodeURIComponent(villageId)}&date=${encodeURIComponent(plan.machine_option.date)}&machine=${encodeURIComponent(plan.machine_option.machine_type)}&slot_id=${encodeURIComponent(plan.machine_option.slot_id)}`
     : '';
 
@@ -231,12 +315,37 @@ export default function FarmerDashboard() {
       <div className="lg:hidden p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('farmer.myField')}</h1>
-          {plan?.is_sample && <SampleDataBadge />}
+          {(isFallbackProfile || plan?.is_sample) && <SampleDataBadge />}
         </div>
 
         {loading ? (
           <GlassCard className="h-64 flex items-center justify-center">
             <p className="text-[var(--text-mid)] animate-pulse">{t('common.loading')}</p>
+          </GlassCard>
+        ) : planError === 'fetch_error' ? (
+          <GlassCard data-accent="red" className="p-6 text-center space-y-3 border-amber-500/30">
+            <div className="flex items-center justify-center gap-2 text-amber-400 text-sm">
+              <LuInfo className="w-5 h-5" />
+              <span>Unable to load clearing plan</span>
+            </div>
+            <PillButton variant="accent" onClick={loadData} className="inline-flex items-center gap-1.5 text-xs">
+              <LuRefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </PillButton>
+          </GlassCard>
+        ) : !isPlanValid ? (
+          <GlassCard data-accent="emerald" className="border border-[var(--emerald)]/20 p-6 space-y-4">
+            <div className="text-2xl font-serif italic text-[var(--text-hi)]">
+              No valid plan for this week yet
+            </div>
+            <p className="text-sm text-[var(--text-mid)]">
+              Generate a personalized stubble management plan for this week.
+            </p>
+            <Link href="/farmer/field">
+              <PillButton variant="accent">
+                {t('farmer.planner') || "Run Planner"}
+              </PillButton>
+            </Link>
           </GlassCard>
         ) : (
           <>
@@ -249,7 +358,7 @@ export default function FarmerDashboard() {
                 </Chip>
                 
                 <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)] mb-6">
-                  {plan?.best_day ? formatIST(plan.best_day, { weekday: 'long', month: 'short', day: 'numeric' }) : currentDateText}
+                  {formatIST(plan!.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}
                 </div>
                 
                 {plan?.sowing_window_status && plan.sowing_window_status !== 'inside' && (
@@ -271,10 +380,10 @@ export default function FarmerDashboard() {
                 )}
 
                 <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-8">
-                  {plan?.reason_text || '—'}
+                  {planReasonMessage}
                 </p>
                 
-                {plan?.machine_option ? (
+                {isMachineValid && plan?.machine_option ? (
                   <div className="flex items-center gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)]">
                     <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
                       <LuTractor />
@@ -379,54 +488,87 @@ export default function FarmerDashboard() {
                     title={t('farmer.myField')}
                     location={locationText}
                     dateText={currentDateText}
-                    isSample={weather?.is_sample ?? plan?.is_sample ?? false}
+                    isSample={isFallbackProfile || (weather?.is_sample ?? plan?.is_sample ?? false)}
                     accent="emerald"
+                    isError={weatherError}
+                    onRetry={loadData}
                   />
                 }
                 heroContent={
-                  <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 flex flex-col justify-center">
-                    <div className="flex items-center justify-between gap-2 mb-2 lg:mb-3">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] lg:text-xs font-bold uppercase tracking-wider bg-[var(--emerald)]/15 text-[var(--emerald)] border border-[var(--emerald)]/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] animate-pulse" />
-                        {t('farmer.bestDay')}
-                      </span>
-                      <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">
-                        Score {plan?.score != null ? plan.score : '—'}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
-                      </span>
+                  loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-[var(--text-mid)] animate-pulse">{t('common.loading')}</p>
                     </div>
-
-                    {plan?.sowing_window_status && plan.sowing_window_status !== 'inside' && (
-                      <div className="mb-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
-                        <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
-                        <div>
-                          <strong>Outside Sowing Window ({plan.sowing_window_status}).</strong> Window: {plan.window_start} to {plan.window_end}.
-                        </div>
+                  ) : planError === 'fetch_error' ? (
+                    <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-amber-500/30 h-full min-h-0 flex flex-col justify-center items-start gap-3">
+                      <div className="flex items-center gap-2 text-amber-400 text-sm">
+                        <LuInfo className="w-5 h-5 shrink-0" />
+                        <span>Unable to load clearing plan</span>
                       </div>
-                    )}
-
-                    {plan?.no_ideal_day && (
-                      <div className="mb-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-                        <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
-                        <div>
-                          <strong>No Ideal Day Found.</strong> Best available day displayed (score: {plan.score}/100).
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
-                      {plan?.best_day
-                        ? formatIST(plan.best_day, {
-                            weekday: 'long',
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : currentDateText}
+                      <PillButton variant="accent" onClick={loadData} className="inline-flex items-center gap-1.5 text-xs">
+                        <LuRefreshCw className="w-3.5 h-3.5" />
+                        <span>Retry</span>
+                      </PillButton>
                     </div>
+                  ) : !isPlanValid ? (
+                    <div className="bg-[var(--bg-1)]/60 rounded-xl p-5 border border-[var(--border)] h-full min-h-0 flex flex-col justify-center gap-3">
+                      <div className="text-2xl lg:text-3xl font-serif italic text-[var(--text-hi)]">
+                        No valid plan for this week yet
+                      </div>
+                      <p className="text-xs text-[var(--text-mid)]">
+                        Run the burn-window planner to check machine slots and ideal weather for your field.
+                      </p>
+                      <div>
+                        <Link href="/farmer/field">
+                          <PillButton variant="accent">
+                            {t('farmer.planner') || "Run Planner"}
+                          </PillButton>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[var(--bg-1)]/60 rounded-xl p-4 sm:p-5 border border-[var(--border)] h-full min-h-0 flex flex-col justify-center">
+                      <div className="flex items-center justify-between gap-2 mb-2 lg:mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] lg:text-xs font-bold uppercase tracking-wider bg-[var(--emerald)]/15 text-[var(--emerald)] border border-[var(--emerald)]/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] animate-pulse" />
+                          {t('farmer.bestDay')}
+                        </span>
+                        <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">
+                          Score {plan?.score != null ? plan.score : '—'}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
+                        </span>
+                      </div>
 
-                    <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-3 leading-relaxed mt-1 lg:mt-2">
-                      {plan?.reason_text || '—'}
-                    </p>
-                  </div>
+                      {plan?.sowing_window_status && plan.sowing_window_status !== 'inside' && (
+                        <div className="mb-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                          <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>Outside Sowing Window ({plan.sowing_window_status}).</strong> Window: {plan.window_start} to {plan.window_end}.
+                          </div>
+                        </div>
+                      )}
+
+                      {plan?.no_ideal_day && (
+                        <div className="mb-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                          <LuInfo className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>No Ideal Day Found.</strong> Best available day displayed (score: {plan.score}/100).
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
+                        {formatIST(plan!.best_day, {
+                          weekday: 'long',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
+
+                      <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-3 leading-relaxed mt-1 lg:mt-2">
+                        {planReasonMessage}
+                      </p>
+                    </div>
+                  )
                 }
                 miniStatsGrid={
                   <div className="grid grid-cols-2 auto-rows-fr gap-3.5 h-full">
@@ -434,12 +576,12 @@ export default function FarmerDashboard() {
                     <MiniStatCard
                       label={t('farmer.machineAvailability')}
                       accent="emerald"
-                      badge={plan?.machine_option?.is_sample ? 'SAMPLE' : undefined}
+                      badge={isMachineValid && plan?.machine_option?.is_sample ? 'SAMPLE' : undefined}
                       icon={<LuTractor className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                      value={plan?.machine_option?.machine_type || 'No machine free this week'}
+                      value={isMachineValid ? plan!.machine_option!.machine_type : 'No machine free this week'}
                       caption={
-                        plan?.machine_option
-                          ? `${plan.machine_option.owner_label}${plan.machine_option.date ? ` • ${formatIST(plan.machine_option.date, { month: 'short', day: 'numeric' })}` : ''}`
+                        isMachineValid
+                          ? `${plan!.machine_option!.owner_label}${plan!.machine_option!.date ? ` • ${formatIST(plan!.machine_option!.date, { month: 'short', day: 'numeric' })}` : ''}`
                           : plan?.straw_outlet_option
                           ? `Straw outlet: ${plan.straw_outlet_option.name}`
                           : 'Check straw outlets for alternate disposal'
@@ -453,7 +595,7 @@ export default function FarmerDashboard() {
                       badge="est."
                       icon={<LuIndianRupee className="w-3.5 h-3.5 text-amber-400" />}
                       value={impact?.financial_savings_inr_est != null ? `₹${impact.financial_savings_inr_est.toLocaleString('en-IN')}` : '—'}
-                      caption={impact?.verified_actions_count != null ? `from ${impact.verified_actions_count} verified actions` : 'from verified actions'}
+                      caption={completedCount > 0 ? `${completedCount} action${completedCount === 1 ? '' : 's'} completed` : 'No actions yet'}
                     />
 
                     {/* 3. Burning Avoided */}
@@ -463,7 +605,7 @@ export default function FarmerDashboard() {
                       badge="est."
                       icon={<LuShieldCheck className="w-3.5 h-3.5 text-[var(--emerald)]" />}
                       value={impact?.acres_avoided_est != null ? `${impact.acres_avoided_est} acres` : '—'}
-                      caption={impact?.straw_diverted_tonnes_est != null ? `${impact.straw_diverted_tonnes_est} t straw diverted` : 'straw diverted'}
+                      caption={impact?.tonnes_straw_diverted_est != null ? `${impact.tonnes_straw_diverted_est} t straw diverted` : '—'}
                     />
 
                     {/* 4. Environment Saved */}
@@ -473,7 +615,7 @@ export default function FarmerDashboard() {
                       badge="est."
                       icon={<LuLeaf className="w-3.5 h-3.5 text-cyan-400" />}
                       value={impact?.pm25_kg_saved_est != null ? `${impact.pm25_kg_saved_est} kg PM2.5` : '—'}
-                      caption={impact?.co2_tonnes_saved_est != null ? `${impact.co2_tonnes_saved_est} t CO₂ kept out` : 'CO₂ kept out'}
+                      caption={impact?.co2_tonnes_saved_est != null ? `${impact.co2_tonnes_saved_est} t CO₂ kept out` : '—'}
                     />
                   </div>
                 }
@@ -498,7 +640,7 @@ export default function FarmerDashboard() {
                   className="flex-[3] min-h-0 flex flex-col justify-between"
                 >
                   <div className="flex flex-col flex-1 justify-between min-h-0 mt-3 sm:mt-4">
-                    {/* NEW Next available row */}
+                    {/* Next available row */}
                     <div className="shrink-0 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-2)] p-3 sm:p-4 flex items-center justify-between gap-3 mb-3 sm:mb-4 group hover:border-[var(--emerald)]/50 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] shrink-0 group-hover:scale-105 transition-transform">
@@ -506,17 +648,17 @@ export default function FarmerDashboard() {
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate">
-                            {plan?.machine_option?.machine_type || 'No machine free this week'}
+                            {isMachineValid ? plan!.machine_option!.machine_type : 'No machine free this week'}
                           </h4>
                           <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">
-                            {plan?.machine_option
-                              ? `${plan.machine_option.owner_label} • ${
-                                  formatIST(plan.machine_option.date || plan.best_day, {
+                            {isMachineValid
+                              ? `${plan!.machine_option!.owner_label} • ${
+                                  formatIST(plan!.machine_option!.date || plan!.best_day, {
                                     weekday: 'short',
                                     month: 'short',
                                     day: 'numeric',
                                   })
-                                }${plan.machine_option.is_sample ? ' (SAMPLE)' : ''}`
+                                }${plan!.machine_option!.is_sample ? ' (SAMPLE)' : ''}`
                               : plan?.straw_outlet_option
                               ? `Consider Straw Outlet: ${plan.straw_outlet_option.name}`
                               : 'Check straw outlets for alternate disposal'}
@@ -528,7 +670,7 @@ export default function FarmerDashboard() {
                       </Link>
                     </div>
 
-                    {/* NEW stats row chips */}
+                    {/* Stats row chips */}
                     <div className="shrink-0 flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
                       <span className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded bg-[var(--bg-2)] border border-[var(--border)]">
                         Bookings: {bookingsCount}{isSampleBookings ? ' (SAMPLE)' : ''}
@@ -542,12 +684,25 @@ export default function FarmerDashboard() {
                     </div>
 
                     <div className="flex-1 overflow-hidden min-h-0 flex flex-col justify-end">
-                      <RecentList
-                        title={t('farmer.recentBookings')}
-                        items={bookingListItems}
-                        totalCount={bookingsCount}
-                        emptyText={t('farmer.noBookings')}
-                      />
+                      {bookingsError ? (
+                        <div className="p-3 rounded-lg bg-[var(--bg-1)] border border-amber-500/20 text-xs text-[var(--text-mid)] flex items-center justify-between">
+                          <span>Unable to load bookings</span>
+                          <button
+                            type="button"
+                            onClick={loadData}
+                            className="text-xs text-[var(--emerald)] hover:underline inline-flex items-center gap-1"
+                          >
+                            <LuRefreshCw className="w-3 h-3" /> Retry
+                          </button>
+                        </div>
+                      ) : (
+                        <RecentList
+                          title={t('farmer.recentBookings')}
+                          items={bookingListItems}
+                          totalCount={bookingsCount}
+                          emptyText={t('farmer.noBookings')}
+                        />
+                      )}
                     </div>
                   </div>
                 </ActionCard>

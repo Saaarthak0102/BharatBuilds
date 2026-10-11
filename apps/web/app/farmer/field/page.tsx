@@ -10,7 +10,7 @@ import { useT } from '@/lib/i18n/useT';
 import { apiClient } from '@/lib/api/client';
 import { villages } from '@/lib/data/reference';
 import { PlanResult, FarmerProfile } from '@/lib/types';
-import { formatIST } from '@/lib/utils/date';
+import { formatIST, isWithinWeekIST } from '@/lib/utils/date';
 import { LuArrowLeft, LuTractor, LuMap, LuInfo, LuSparkles } from 'react-icons/lu';
 
 export default function FarmerFieldPlanner() {
@@ -72,15 +72,32 @@ export default function FarmerFieldPlanner() {
         crop_stage: cropStage,
         language: profile?.language || 'en'
       });
-      setPlanResult(res.data);
-      localStorage.setItem('lastPlanResult', JSON.stringify(res.data));
+      const data = res.data;
+      const isBestDayValid = isWithinWeekIST(data?.best_day);
+      const isMachineValid = !data?.machine_option?.date || isWithinWeekIST(data?.machine_option?.date);
+      if (!isBestDayValid || !isMachineValid) {
+        setPlanResult(null);
+        setPlanError("No valid plan for this week yet");
+        localStorage.removeItem('lastPlanResult');
+      } else {
+        setPlanResult(data);
+        localStorage.setItem('lastPlanResult', JSON.stringify(data));
+      }
     } catch (err: any) {
       console.error(err);
       const cached = localStorage.getItem('lastPlanResult');
       if (cached) {
         try {
-          setPlanResult(JSON.parse(cached));
-          setIsCached(true);
+          const parsed = JSON.parse(cached);
+          const isBestDayValid = isWithinWeekIST(parsed?.best_day);
+          const isMachineValid = !parsed?.machine_option?.date || isWithinWeekIST(parsed?.machine_option?.date);
+          if (isBestDayValid && isMachineValid) {
+            setPlanResult(parsed);
+            setIsCached(true);
+          } else {
+            localStorage.removeItem('lastPlanResult');
+            setPlanError("No valid plan for this week yet");
+          }
         } catch (e) {
           setPlanError("Network error. Please try again.");
         }
@@ -172,8 +189,14 @@ export default function FarmerFieldPlanner() {
 
          {/* Error / Offline Fallback Label */}
          {planError && !isCached && (
-            <GlassCard data-accent="red" className="border-red-500/20 text-red-400">
-               <div className="flex items-center gap-2"><LuInfo className="w-5 h-5 shrink-0" /> {planError}</div>
+            <GlassCard data-accent="red" className="border-amber-500/30 text-amber-300 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+               <div className="flex items-center gap-2">
+                 <LuInfo className="w-5 h-5 shrink-0 text-amber-400" />
+                 <span>{planError}</span>
+               </div>
+               <PillButton variant="accent" onClick={runPlan} disabled={isPlanning} className="text-xs">
+                 Retry
+               </PillButton>
             </GlassCard>
          )}
 
@@ -202,8 +225,7 @@ export default function FarmerFieldPlanner() {
                     <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-start gap-2">
                       <LuInfo className="w-5 h-5 shrink-0 mt-0.5" />
                       <div>
-                        <strong>Notice: Outside Recommended Sowing Window. </strong>
-                        Current sowing status is <em>{planResult.sowing_window_status}</em>. Recommended window for this crop stage: {planResult.window_start} to {planResult.window_end}.
+                        <strong>Notice: Outside Recommended Sowing Window ({planResult.sowing_window_status}).</strong> Recommended window for this crop stage: {planResult.window_start} to {planResult.window_end}.
                       </div>
                     </div>
                   )}
@@ -240,7 +262,11 @@ export default function FarmerFieldPlanner() {
                   </div>
                   
                   <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-6">
-                    {planResult.reason_text}
+                    {planResult.sowing_window_status && planResult.sowing_window_status !== 'inside'
+                      ? `[Notice: Outside recommended sowing window (${planResult.sowing_window_status})${planResult.window_start ? `: ${planResult.window_start} to ${planResult.window_end}` : ''}] ${planResult.reason_text}`
+                      : planResult.no_ideal_day
+                      ? `[Notice: No ideal clearing day found in 7-day forecast (Score: ${planResult.score}/100)] ${planResult.reason_text}`
+                      : planResult.reason_text}
                   </p>
 
                   <div className="text-xs text-[var(--text-low)] mb-8 italic">

@@ -26,6 +26,8 @@ interface WeatherPanelProps {
   isSample?: boolean;
   accent?: 'emerald' | 'cyan';
   className?: string;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
 export function WeatherPanel({
@@ -36,6 +38,8 @@ export function WeatherPanel({
   isSample = true,
   accent = 'cyan',
   className,
+  isError,
+  onRetry,
 }: WeatherPanelProps) {
   // Condition tint
   const bgTint = accent === 'emerald' ? 'bg-emerald-500/5' : 'bg-teal-900/10';
@@ -76,6 +80,15 @@ export function WeatherPanel({
             <span>{location}</span>
             <span className="text-[var(--text-low)]">•</span>
             <span className="text-[var(--text-low)]">{dateText}</span>
+            {isError && onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="ml-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+              >
+                Retry
+              </button>
+            )}
           </div>
         </div>
 

@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api/client';
 import { LuArrowLeft, LuTractor, LuCheck, LuInfo, LuMap } from 'react-icons/lu';
 import { useT } from '@/lib/i18n/useT';
 import { FarmerProfile, PlanResult } from '@/lib/types';
-import { formatIST, addDaysIST } from '@/lib/utils/date';
+import { formatIST, addDaysIST, isWithinWeekIST } from '@/lib/utils/date';
 
 function BookAgentFlow() {
   const router = useRouter();
@@ -70,7 +70,15 @@ function BookAgentFlow() {
         start_date: startDate,
         end_date: endDate
       });
-      setPlanResult(res.data);
+      const data = res.data;
+      const isBestDayValid = isWithinWeekIST(data?.best_day);
+      const isMachineValid = Boolean(data?.machine_option?.date && isWithinWeekIST(data.machine_option.date));
+      if (!isBestDayValid || !isMachineValid) {
+        setPlanResult(null);
+        setPlanError("No valid plan for this week yet");
+      } else {
+        setPlanResult(data);
+      }
     } catch (err: any) {
       setPlanError(err.message || "Failed to find options. Please try again.");
     } finally {
@@ -167,6 +175,23 @@ function BookAgentFlow() {
 
   // State 2: URL Direct Booking (Fallback for planner links)
   if (urlSlotId && urlDate && !planResult) {
+    if (!isWithinWeekIST(urlDate)) {
+      return (
+        <div className="w-full max-w-2xl mx-auto px-4 lg:px-6 mt-6">
+          <GlassCard data-accent="emerald" className="py-6 space-y-4 text-center">
+            <h2 className="text-xl font-bold text-[var(--text-hi)]">No valid plan for this week yet</h2>
+            <p className="text-sm text-[var(--text-mid)]">
+              The requested booking date ({formatIST(urlDate)}) is outside the current 7-day clearing window.
+            </p>
+            <div className="pt-2">
+              <PillButton variant="accent" onClick={() => router.push('/farmer/field')}>
+                Go to Planner
+              </PillButton>
+            </div>
+          </GlassCard>
+        </div>
+      );
+    }
     return (
        <div className="w-full pb-12">
         <div className="sticky top-0 lg:top-16 z-[40] border-b border-[var(--border)] bg-[var(--bg-1)]/80 backdrop-blur-md px-4 py-3 flex items-center">

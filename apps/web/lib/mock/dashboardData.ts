@@ -1,3 +1,5 @@
+import { addDaysIST, formatIST } from '../utils/date';
+
 /**
  * Centralized typed mock data and impact calculation engine for Saans dashboards.
  * Powers both /farmer and /citizen dashboards to maintain numeric consistency.
@@ -320,21 +322,21 @@ export const MOCK_RECENT_BOOKINGS: MachineBookingItem[] = [
   {
     id: 'bk-101',
     machineName: 'Happy Seeder 7-Row',
-    dateSlot: 'Nov 5 • Morning Slot (08:00 AM)',
+    dateSlot: `${formatIST(addDaysIST(1), { month: 'short', day: 'numeric' })} • Morning Slot (08:00 AM)`,
     centre: 'Kisan Seva Kendra, Patiala',
     status: 'Confirmed',
   },
   {
     id: 'bk-102',
     machineName: 'Super SMS Harvester',
-    dateSlot: 'Nov 8 • Afternoon Slot (01:30 PM)',
+    dateSlot: `${formatIST(addDaysIST(3), { month: 'short', day: 'numeric' })} • Afternoon Slot (01:30 PM)`,
     centre: 'Punjab Agro Hub, Rajpura',
     status: 'Pending',
   },
   {
     id: 'bk-103',
     machineName: 'Rotavator Mulcher',
-    dateSlot: 'Oct 29 • Morning Slot',
+    dateSlot: `${formatIST(addDaysIST(-2), { month: 'short', day: 'numeric' })} • Morning Slot`,
     centre: 'Kisan Seva Kendra, Patiala',
     status: 'Completed',
   },

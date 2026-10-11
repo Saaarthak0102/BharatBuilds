@@ -1,7 +1,10 @@
 import { PlanResult } from '../types';
+import { todayIST, addDaysIST } from '../utils/date';
+
+const bestDay = addDaysIST(2);
 
 export const mockFarmerPlan: PlanResult = {
-  best_day: '2024-11-05',
+  best_day: bestDay,
   score: 82,
   score_breakdown: {
     sowing_window: 20,
@@ -14,12 +17,12 @@ export const mockFarmerPlan: PlanResult = {
     slot_id: 'slot-001',
     machine_type: 'Happy Seeder',
     owner_label: 'Kisan Seva Kendra, Patiala',
-    date: '2024-11-05',
+    date: bestDay,
     is_sample: true,
   },
   straw_outlet_option: null,
   reason_text:
-    "November 5th is the best day to clear your field. Low wind speeds mean smoke won't drift toward populated areas, and a Happy Seeder is available at Kisan Seva Kendra. No rain expected, so machinery can operate freely.",
+    "Optimal conditions for clearing your field in the upcoming window. Low wind speeds reduce drift, and a Happy Seeder is available at Kisan Seva Kendra. No rain expected, so machinery can operate freely.",
   tool_trace: [
     { tool: 'get_forecast', status: 'ok', latency_ms: 120 },
     { tool: 'get_wind', status: 'ok', latency_ms: 95 },
@@ -28,13 +31,13 @@ export const mockFarmerPlan: PlanResult = {
     { tool: 'find_machine_slots', status: 'ok', latency_ms: 80 },
   ],
   seven_day_scores: [
-    { date: '2024-11-03', score: 45 },
-    { date: '2024-11-04', score: 68 },
-    { date: '2024-11-05', score: 82 },
-    { date: '2024-11-06', score: 74 },
-    { date: '2024-11-07', score: 60 },
-    { date: '2024-11-08', score: 55 },
-    { date: '2024-11-09', score: 71 },
+    { date: todayIST(), score: 45 },
+    { date: addDaysIST(1), score: 68 },
+    { date: addDaysIST(2), score: 82 },
+    { date: addDaysIST(3), score: 74 },
+    { date: addDaysIST(4), score: 60 },
+    { date: addDaysIST(5), score: 55 },
+    { date: addDaysIST(6), score: 71 },
   ],
   is_sample: true,
 };
