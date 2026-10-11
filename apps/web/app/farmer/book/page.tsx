@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api/client';
 import { LuArrowLeft, LuTractor, LuCheck, LuInfo, LuMap } from 'react-icons/lu';
 import { useT } from '@/lib/i18n/useT';
 import { FarmerProfile, PlanResult } from '@/lib/types';
-import { formatKolkataDate, getKolkataISODate } from '@/lib/date';
+import { formatIST, addDaysIST } from '@/lib/utils/date';
 
 function BookAgentFlow() {
   const router = useRouter();
@@ -18,6 +18,9 @@ function BookAgentFlow() {
 
   const urlSlotId = searchParams.get('slot_id');
   const urlDate = searchParams.get('date');
+  const urlMachine = searchParams.get('machine') || searchParams.get('machine_type');
+  const urlRate = searchParams.get('rate') || searchParams.get('price');
+  const urlVillage = searchParams.get('village') || searchParams.get('village_id');
 
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,9 +45,9 @@ function BookAgentFlow() {
   useEffect(() => {
     apiClient.farmer.getProfile().then(res => {
       setProfile(res.data);
-      // set defaults in Asia/Kolkata timezone
-      setStartDate(getKolkataISODate(1));
-      setEndDate(getKolkataISODate(7));
+      // set defaults in Asia/Kolkata timezone: tomorrow and tomorrow + 6 (IST +7)
+      setStartDate(addDaysIST(1));
+      setEndDate(addDaysIST(7));
     }).catch(err => {
       console.error(err);
       setGeneralError("Could not load profile. Please try again.");
@@ -182,7 +185,9 @@ function BookAgentFlow() {
                     <LuTractor className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[var(--text-hi)]">Happy Seeder</h3>
+                    <h3 className="font-semibold text-[var(--text-hi)]">
+                      {urlMachine || (urlSlotId ? `Machine Slot (${urlSlotId})` : 'Equipment Service')}
+                    </h3>
                     <p className="text-sm text-[var(--text-mid)]">Slot ID: {urlSlotId}</p>
                   </div>
                 </div>
@@ -190,11 +195,15 @@ function BookAgentFlow() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Date</div>
-                    <div className="text-sm text-[var(--text-hi)]">{formatKolkataDate(urlDate, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                    <div className="text-sm text-[var(--text-hi)]">{formatIST(urlDate, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Location</div>
-                    <div className="text-sm text-[var(--text-hi)]">{profile?.village_name || profile?.village_id}</div>
+                    <div className="text-sm text-[var(--text-hi)]">{urlVillage || profile?.village_name || profile?.village_id}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Rate</div>
+                    <div className="text-sm text-[var(--text-hi)]">{urlRate || 'Rate on request'}</div>
                   </div>
                 </div>
               </div>
@@ -321,11 +330,13 @@ function BookAgentFlow() {
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
                       <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Date</div>
-                      <div className="text-sm text-[var(--text-hi)]">{formatKolkataDate(planResult.machine_option.date, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                      <div className="text-sm text-[var(--text-hi)]">{formatIST(planResult.machine_option.date, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Price</div>
-                      <div className="text-sm text-[var(--text-hi)]">Standard rates (est.)</div>
+                      <div className="text-[10px] font-bold text-[var(--text-low)] uppercase tracking-wider mb-1">Rate</div>
+                      <div className="text-sm text-[var(--text-hi)]">
+                        {(planResult.machine_option as any).rate || (planResult.machine_option as any).price || urlRate || 'Rate on request'}
+                      </div>
                     </div>
                   </div>
                </div>

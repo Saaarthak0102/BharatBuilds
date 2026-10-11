@@ -245,10 +245,10 @@ export interface WeatherSnapshot {
   humidity: string;
   rainChance: string;
   visibility: string;
-  uvIndex: number;
+  uvIndex: string | number;
   sunset: string;
-  aqi: number;
-  aqiLabel: 'Good' | 'Satisfactory' | 'Moderate' | 'Poor' | 'Very Poor' | 'Severe';
+  aqi?: number;
+  aqiLabel?: 'Good' | 'Satisfactory' | 'Moderate' | 'Poor' | 'Very Poor' | 'Severe' | string;
   hourly: HourlyWeather[];
 }
 

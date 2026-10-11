@@ -8,9 +8,9 @@ import { PillButton } from '@/components/ui/PillButton';
 import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
 import { useT } from '@/lib/i18n/useT';
 import { apiClient } from '@/lib/api/client';
-import { mockVillages } from '@/lib/mock/villages';
+import { villages } from '@/lib/data/reference';
 import { PlanResult, FarmerProfile } from '@/lib/types';
-import { formatKolkataDate } from '@/lib/date';
+import { formatIST } from '@/lib/utils/date';
 import { LuArrowLeft, LuTractor, LuMap, LuInfo } from 'react-icons/lu';
 
 export default function FarmerFieldPlanner() {
@@ -120,7 +120,7 @@ export default function FarmerFieldPlanner() {
                     value={selectedVillageId}
                     onChange={(e) => setSelectedVillageId(e.target.value)}
                   >
-                    {mockVillages.map(v => (
+                    {villages.map(v => (
                       <option key={v.village_id} value={v.village_id}>{v.name} ({v.district})</option>
                     ))}
                   </select>
@@ -220,7 +220,7 @@ export default function FarmerFieldPlanner() {
 
                   <div className="flex items-end gap-4 mb-6 flex-wrap">
                     <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)]">
-                      {formatKolkataDate(planResult.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}
+                      {formatIST(planResult.best_day, { weekday: 'long', month: 'short', day: 'numeric' })}
                     </div>
                     <div className="text-lg font-mono text-[var(--emerald)] mb-1">
                       Score {planResult.score}/100

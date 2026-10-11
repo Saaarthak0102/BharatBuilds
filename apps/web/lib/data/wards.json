@@ -1,0 +1,9 @@
+[
+  { "ward_id": "ward-east-delhi-001", "name": "Anand Vihar", "zone": "East Delhi", "city": "Delhi", "lat": 28.6692, "lng": 77.3055, "is_sample": true },
+  { "ward_id": "ward-east-delhi-002", "name": "Laxmi Nagar", "zone": "East Delhi", "city": "Delhi", "lat": 28.6304, "lng": 77.2770, "is_sample": true },
+  { "ward_id": "ward-north-delhi-001", "name": "Civil Lines", "zone": "North Delhi", "city": "Delhi", "lat": 28.6814, "lng": 77.2226, "is_sample": true },
+  { "ward_id": "ward-south-delhi-001", "name": "Hauz Khas", "zone": "South Delhi", "city": "Delhi", "lat": 28.5494, "lng": 77.2001, "is_sample": true },
+  { "ward_id": "ward-central-delhi-001", "name": "Connaught Place", "zone": "Central Delhi", "city": "Delhi", "lat": 28.6315, "lng": 77.2167, "is_sample": true },
+  { "ward_id": "ward-noida-001", "name": "Sector 62, Noida", "zone": "Noida", "city": "Noida", "lat": 28.6252, "lng": 77.3640, "is_sample": true },
+  { "ward_id": "ward-gurgaon-001", "name": "Sector 29, Gurugram", "zone": "Gurugram", "city": "Gurugram", "lat": 28.4595, "lng": 77.0266, "is_sample": true }
+]

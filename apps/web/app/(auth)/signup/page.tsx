@@ -9,8 +9,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PillButton } from '@/components/ui/PillButton';
 import { useSession } from '@/lib/auth/useSession';
 import { getDashboardPath } from '@/lib/auth/roleRedirect';
-import { mockVillages } from '@/lib/mock/villages';
-import { mockWards } from '@/lib/mock/wards';
+import { villages, wards, getVillage, getWard } from '@/lib/data/reference';
 import {
   saveStoredHealthProfile,
   CitizenHealthProfile,
@@ -44,8 +43,8 @@ function SignupFlow() {
 
   // Farmer specific fields
   const [phone, setPhone] = useState('+91');
-  const [selectedVillageId, setSelectedVillageId] = useState(mockVillages[0].village_id);
-  const [district, setDistrict] = useState(mockVillages[0].district);
+  const [selectedVillageId, setSelectedVillageId] = useState(villages[0].village_id);
+  const [district, setDistrict] = useState(villages[0].district);
   const [landSize, setLandSize] = useState('5');
   const [mainCrop, setMainCrop] = useState('Paddy (Basmati)');
   const [cropStage, setCropStage] = useState<CropStage>('harvested');
@@ -53,7 +52,7 @@ function SignupFlow() {
 
   // Citizen specific fields
   const [citizenContact, setCitizenContact] = useState('');
-  const [selectedWardId, setSelectedWardId] = useState(mockWards[0].ward_id);
+  const [selectedWardId, setSelectedWardId] = useState(wards[0].ward_id);
   const [alertThreshold, setAlertThreshold] = useState('300');
   const [hasKids, setHasKids] = useState(false);
   const [hasElderly, setHasElderly] = useState(false);
@@ -81,7 +80,7 @@ function SignupFlow() {
 
   const handleVillageChange = (vid: string) => {
     setSelectedVillageId(vid);
-    const found = mockVillages.find((v) => v.village_id === vid);
+    const found = getVillage(vid);
     if (found) {
       setDistrict(found.district);
     }
@@ -94,7 +93,7 @@ function SignupFlow() {
 
     try {
       if (roleParam === 'farmer') {
-        const selectedVillage = mockVillages.find((v) => v.village_id === selectedVillageId);
+        const selectedVillage = getVillage(selectedVillageId);
         const signupData: SignupData = {
           role: 'farmer',
           name,
@@ -124,7 +123,7 @@ function SignupFlow() {
         const isEmail = citizenContact.includes('@');
         const email = isEmail ? citizenContact.trim() : undefined;
         const citizenPhone = !isEmail ? citizenContact.trim() : undefined;
-        const selectedWard = mockWards.find((w) => w.ward_id === selectedWardId);
+        const selectedWard = getWard(selectedWardId);
 
         // Save local health data
         const healthData: CitizenHealthProfile = {
@@ -350,7 +349,7 @@ function SignupFlow() {
                   onChange={(e) => handleVillageChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-1)] border border-[var(--border)] text-xs text-[var(--text-hi)] outline-none focus:border-[var(--accent)] transition-colors"
                 >
-                  {mockVillages.map((v) => (
+                  {villages.map((v) => (
                     <option key={v.village_id} value={v.village_id}>
                       {v.name} ({v.district})
                     </option>
@@ -447,7 +446,7 @@ function SignupFlow() {
                   onChange={(e) => setSelectedWardId(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-1)] border border-[var(--border)] text-xs text-[var(--text-hi)] outline-none focus:border-[var(--accent)] transition-colors"
                 >
-                  {mockWards.map((w) => (
+                  {wards.map((w) => (
                     <option key={w.ward_id} value={w.ward_id}>
                       {w.name} ({w.zone})
                     </option>

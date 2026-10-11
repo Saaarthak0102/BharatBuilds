@@ -8,10 +8,11 @@ import { WeatherStrip } from '@/components/dashboard/WeatherStrip';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { CitizenBackHeader } from '@/components/citizen/CitizenBackHeader';
 import { getToday, getProfile } from '@/lib/api/client';
-import { mockWards } from '@/lib/mock/wards';
+import { wards, getWard } from '@/lib/data/reference';
 import { TodayResponse, AQICategory } from '@/lib/types';
 import { WeatherStripData } from '@/lib/mock/dashboardData';
 import { useT } from '@/lib/i18n/useT';
+import { relativeAgo } from '@/lib/utils/date';
 import { LuMapPin, LuRefreshCw, LuWind, LuShieldAlert, LuWifiOff } from 'react-icons/lu';
 
 const LOCAL_STORAGE_CACHE_KEY = 'saans_citizen_today_cache';
@@ -172,14 +173,17 @@ export default function CitizenTodayPage() {
     fetchTodayData(newAreaId);
   };
 
-  const selectedWard = mockWards.find((w) => w.ward_id === selectedAreaId);
+  const selectedWard = getWard(selectedAreaId);
   const aqiColor = getCategoryColor(today?.aqi_category);
 
   // Freshness calculation
   const freshnessTimeStr =
-    today?.freshness?.data_updated_at ||
-    (typeof today?.freshness === 'string' ? (today.freshness as string) : undefined);
-  const freshnessLabel = `Updated ${formatRelativeTime(freshnessTimeStr)}`;
+    typeof today?.freshness === 'object' && today.freshness !== null
+      ? today.freshness.data_updated_at
+      : typeof today?.freshness === 'string'
+      ? today.freshness
+      : undefined;
+  const freshnessLabel = `Updated ${relativeAgo(freshnessTimeStr)}`;
 
   // Construct WeatherStrip data matching WeatherStripData shape
   const weatherStripData: WeatherStripData | null = today
@@ -221,7 +225,7 @@ export default function CitizenTodayPage() {
                 disabled={loading}
                 className="pl-9 pr-8 py-2 bg-[var(--bg-1)] border border-[var(--border)] rounded-full text-sm font-medium text-[var(--text-hi)] hover:border-[var(--cyan)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-colors cursor-pointer disabled:opacity-50"
               >
-                {mockWards.map((ward) => (
+                {wards.map((ward) => (
                   <option key={ward.ward_id} value={ward.ward_id} className="bg-[var(--bg-0)] text-[var(--text-hi)]">
                     {ward.name} ({ward.zone})
                   </option>
@@ -234,7 +238,7 @@ export default function CitizenTodayPage() {
             {isCached && (
               <Chip className="bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1.5 py-0.5">
                 <LuWifiOff className="w-3 h-3" />
-                <span>Last result ({formatRelativeTime(cachedTime || undefined)})</span>
+                <span>Last result ({relativeAgo(cachedTime || undefined)})</span>
               </Chip>
             )}
             {!isCached && today && (

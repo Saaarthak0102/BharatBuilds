@@ -99,12 +99,14 @@ export function WeatherPanel({
                   <span className="flex items-center"><LuArrowUp className="w-3 h-3 text-[var(--text-low)]" /> {weather.high}&deg;</span>
                   <span className="flex items-center"><LuArrowDown className="w-3 h-3 text-[var(--text-low)]" /> {weather.low}&deg;</span>
                 </div>
-                <div 
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-[var(--bg-1)]"
-                  style={{ color: getAqiColor(weather.aqiLabel), borderColor: `${getAqiColor(weather.aqiLabel)}40` }}
-                >
-                  AQI {weather.aqi} ({weather.aqiLabel})
-                </div>
+                {weather.aqi != null && (
+                  <div 
+                    className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-[var(--bg-1)]"
+                    style={{ color: getAqiColor(weather.aqiLabel || 'Moderate'), borderColor: `${getAqiColor(weather.aqiLabel || 'Moderate')}40` }}
+                  >
+                    AQI {weather.aqi}{weather.aqiLabel ? ` (${weather.aqiLabel})` : ''}
+                  </div>
+                )}
               </div>
             </div>
           </div>

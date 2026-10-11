@@ -8,13 +8,9 @@ import { apiClient } from '@/lib/api/client';
 import { StrawOutlet, FacilityType, FarmerProfile } from '@/lib/types';
 import { LuArrowLeft, LuMapPin, LuPhone } from 'react-icons/lu';
 import { useT } from '@/lib/i18n/useT';
+import { referenceDistricts, districtKey } from '@/lib/data/reference';
 
-const DISTRICTS = [
-  { id: 'patiala', name: 'Patiala' },
-  { id: 'ludhiana', name: 'Ludhiana' },
-  { id: 'sangrur', name: 'Sangrur' },
-  { id: 'moga', name: 'Moga' },
-];
+const DISTRICTS = referenceDistricts;
 
 const FACILITY_TYPES: { id: FacilityType | 'all'; label: string }[] = [
   { id: 'all', label: 'All Types' },
@@ -33,7 +29,7 @@ export default function StrawOutletsPage() {
   
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('patiala');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(DISTRICTS[0]?.id || 'patiala');
   const [selectedType, setSelectedType] = useState<FacilityType | 'all'>('all');
   
   const [outlets, setOutlets] = useState<StrawOutlet[]>([]);
@@ -43,8 +39,8 @@ export default function StrawOutletsPage() {
   useEffect(() => {
     apiClient.farmer.getProfile().then(res => {
       setProfile(res.data);
-      if (res.data.district) {
-        const d = res.data.district.toLowerCase();
+      if (res.data?.district) {
+        const d = districtKey(res.data.district);
         if (DISTRICTS.some(x => x.id === d)) {
           setSelectedDistrict(d);
         }
@@ -59,7 +55,7 @@ export default function StrawOutletsPage() {
     setLoading(true);
     setError(null);
     
-    apiClient.farmer.strawOutlets(selectedDistrict)
+    apiClient.farmer.strawOutlets(districtKey(selectedDistrict))
       .then(res => {
         if (!isMounted) return;
         const data = res.data as any; // any because the type might be { outlets: StrawOutlet[], is_sample: boolean }

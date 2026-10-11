@@ -9,6 +9,8 @@ export interface ToolTraceItem {
   tool: string;
   status?: string;
   latency_ms: number;
+  timeAgo?: string;
+  isSample?: boolean;
 }
 
 interface AgentLogAccordionProps {
@@ -112,6 +114,11 @@ export function AgentLogAccordion({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className={cn('w-2 h-2 rounded-full shrink-0 animate-pulse', dotColorClass)} />
                   <span className="text-[var(--text-hi)] truncate font-semibold">{trace.tool}</span>
+                  {trace.isSample && (
+                    <span className="text-[10px] text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10 uppercase tracking-wider font-bold">
+                      SAMPLE
+                    </span>
+                  )}
                   {trace.status && (
                     <span className="text-[10px] text-[var(--emerald)] px-1.5 py-0.5 rounded bg-[var(--emerald)]/10 uppercase tracking-wider flex items-center gap-1">
                       <LuCheck className="w-3 h-3" />
@@ -119,7 +126,7 @@ export function AgentLogAccordion({
                     </span>
                   )}
                 </div>
-                <span className="text-[var(--text-low)] ml-3 shrink-0">{trace.latency_ms}ms</span>
+                <span className="text-[var(--text-low)] ml-3 shrink-0">{trace.timeAgo || `${trace.latency_ms}ms`}</span>
               </div>
             ))
           )}

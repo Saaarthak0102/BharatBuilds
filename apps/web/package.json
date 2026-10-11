@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "npx tsx --test --test-concurrency=1 lib/auth/__tests__/*.test.ts",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "sync-data": "node scripts/sync-reference-data.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

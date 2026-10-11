@@ -40,6 +40,11 @@ export const hi: typeof en = {
     troubleBreathing: 'सांस लेने में कठिनाई? तुरंत मदद लें',
     recentReports: 'मेरी हालिया रिपोर्ट',
     call112: '112 / एम्बुलेंस पर कॉल करें',
+    burningStoppedToday: 'पिछले 24 घंटे में आग की घटनाएं', // TODO: Human review (Hindi)
+    firesDetected24h: 'पिछले 24 घंटे में आग की घटनाएं', // TODO: Human review (Hindi)
+    savedToday: 'दर्ज की गई रिपोर्ट', // TODO: Human review (Hindi)
+    reportsSubmitted: 'दर्ज की गई रिपोर्ट', // TODO: Human review (Hindi)
+    bestTimeOutside: 'बाहर जाने का सामान्य साफ़ समय (मौसमी पैटर्न)', // TODO: Human review (Hindi)
     // TODO: Human review (Hindi translations for today and report screens)
     selectArea: 'वार्ड / क्षेत्र चुनें',
     freshnessLabel: 'अपडेट किया गया {time}',

@@ -1,5 +1,6 @@
 export const API_ENDPOINTS = {
   HEALTH: '/v1/health',
+  WEATHER: '/v1/weather',
   FARMER: {
     PLAN: '/v1/farmer/plan',
     BOOK: '/v1/farmer/book',

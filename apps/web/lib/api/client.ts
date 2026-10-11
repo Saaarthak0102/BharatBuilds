@@ -5,7 +5,22 @@ import { mockReports } from '../mock/reports';
 import { mockStrawOutlets } from '../mock/strawOutlets';
 import { mockMapLayers } from '../mock/mapLayers';
 import { authClient } from '../auth/authClient';
-import type { PlanResult, TodayResponse, MapLayers, Report, ApiResponse, MachineOption, FarmerProfile, CitizenProfile, Role, Language } from '../types';
+import type {
+  PlanResult,
+  TodayResponse,
+  MapLayers,
+  Report,
+  ApiResponse,
+  MachineOption,
+  FarmerProfile,
+  CitizenProfile,
+  Role,
+  Language,
+  WeatherResponse,
+  FarmerBookingsResponse,
+  FarmerImpact,
+  FarmerBooking,
+} from '../types';
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -214,6 +229,113 @@ export async function getToday(areaId?: string): Promise<ApiResponse<TodayRespon
   );
 }
 
+export async function getWeather(locationId?: string): Promise<ApiResponse<WeatherResponse>> {
+  const id = locationId || 'village-patiala-001';
+  if (isMockMode) {
+    return new Promise((resolve) =>
+      resolve({
+        data: {
+          location_id: id,
+          current: 24,
+          today_high: 29,
+          today_low: 18,
+          rain_chance: 5,
+          uv: 6,
+          sunset: '18:12',
+          wind: {
+            speed: 12,
+            direction: 290,
+          },
+          humidity: 48,
+          condition: 'Clear',
+          fetched_at: new Date().toISOString(),
+          is_sample: true,
+        },
+      })
+    );
+  }
+  return fetchWithAuth(`${API_ENDPOINTS.WEATHER}?location_id=${encodeURIComponent(id)}`);
+}
+
+export async function getFarmerBookings(): Promise<ApiResponse<FarmerBookingsResponse>> {
+  if (isMockMode) {
+    return new Promise((resolve) =>
+      resolve({
+        data: {
+          bookings: [
+            {
+              booking_id: 'bk-101',
+              machine_type: 'Happy Seeder 7-Row',
+              owner_label: 'Kisan Seva Kendra, Patiala',
+              village_id: 'village-patiala-001',
+              date: '2026-10-12',
+              status: 'CONFIRMED',
+              acres: 5,
+              is_sample: true,
+            },
+            {
+              booking_id: 'bk-102',
+              machine_type: 'Super SMS Harvester',
+              owner_label: 'Punjab Agro Hub, Rajpura',
+              village_id: 'village-patiala-001',
+              date: '2026-10-15',
+              status: 'PENDING',
+              acres: 5,
+              is_sample: true,
+            },
+          ],
+          counts_by_status: { CONFIRMED: 1, PENDING: 1, COMPLETED: 0, CANCELLED: 0 },
+          status_counts: { CONFIRMED: 1, PENDING: 1, COMPLETED: 0, CANCELLED: 0 },
+          acres: 10,
+          impact: {
+            acres_avoided_est: 10,
+            tonnes_straw_diverted_est: 22,
+            pm25_kg_saved_est: 143,
+            co2_tonnes_saved_est: 32.1,
+            financial_savings_inr_est: 10000,
+          },
+          is_sample: true,
+        },
+      })
+    );
+  }
+  return fetchWithAuth(API_ENDPOINTS.FARMER.BOOKINGS);
+}
+
+export async function getReports(
+  options?: { bbox?: string; mine?: boolean } | string
+): Promise<ApiResponse<{ reports: Report[]; status_counts?: Record<string, number>; is_sample: boolean }>> {
+  let url = API_ENDPOINTS.REPORTS.GET;
+  const isMine = typeof options === 'object' && options?.mine;
+  const bbox = typeof options === 'string' ? options : options?.bbox;
+
+  const params = new URLSearchParams();
+  if (bbox) params.set('bbox', bbox);
+  if (isMine) params.set('mine', 'true');
+  const qs = params.toString();
+  if (qs) url += `?${qs}`;
+
+  if (isMockMode) {
+    return new Promise((resolve) => {
+      const list = isMine ? mockReports.slice(0, 3) : mockReports;
+      resolve({
+        data: {
+          reports: list,
+          status_counts: {
+            received: 1,
+            routed: 1,
+            investigating: 0,
+            resolved: 1,
+            rejected: 0,
+          },
+          is_sample: true,
+        },
+      });
+    });
+  }
+  return fetchWithAuth(url);
+}
+
 // ─── Profile Mapping & Retrieval (Backend snake_case -> UI camelCase) ──────
 
 export interface MappedProfile {
@@ -397,38 +519,7 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
     },
-    getBookings: async (): Promise<ApiResponse<{ bookings: any[]; is_sample?: boolean }>> => {
-      if (isMockMode) {
-        return new Promise((resolve) =>
-          resolve({
-            data: {
-              bookings: [
-                {
-                  booking_id: 'bk-101',
-                  machine_type: 'Happy Seeder 7-Row',
-                  owner_label: 'Kisan Seva Kendra, Patiala',
-                  village_id: 'village-patiala-001',
-                  date: '2026-10-12',
-                  status: 'CONFIRMED',
-                  is_sample: true,
-                },
-                {
-                  booking_id: 'bk-102',
-                  machine_type: 'Super SMS Harvester',
-                  owner_label: 'Punjab Agro Hub, Rajpura',
-                  village_id: 'village-patiala-001',
-                  date: '2026-10-15',
-                  status: 'PENDING',
-                  is_sample: true,
-                },
-              ],
-              is_sample: true,
-            },
-          })
-        );
-      }
-      return fetchWithAuth(API_ENDPOINTS.FARMER.BOOKINGS);
-    },
+    getBookings: getFarmerBookings,
     strawOutlets: async (districtId: string) => {
       if (isMockMode) {
         return new Promise((resolve) =>
@@ -441,9 +532,11 @@ export const apiClient = {
       const res = await getProfile();
       return { data: res.data as unknown as FarmerProfile };
     },
+    weather: getWeather,
   },
   citizen: {
     today: getToday,
+    weather: getWeather,
     ask: async (data: {
       question: string;
       area_id: string;
@@ -491,16 +584,10 @@ export const apiClient = {
       return fetchWithAuth(url);
     },
   },
+  weather: getWeather,
   reports: {
-    get: async (
-      bbox?: string
-    ): Promise<ApiResponse<{ reports: Report[]; is_sample: boolean }>> => {
-      if (isMockMode) {
-        return new Promise((resolve) => resolve({ data: { reports: mockReports, is_sample: true } }));
-      }
-      const url = bbox ? `${API_ENDPOINTS.REPORTS.GET}?bbox=${bbox}` : API_ENDPOINTS.REPORTS.GET;
-      return fetchWithAuth(url);
-    },
+    get: getReports,
+    mine: () => getReports({ mine: true }),
     getById: getReport,
     uploadUrl: getUploadUrl,
     uploadPhoto,

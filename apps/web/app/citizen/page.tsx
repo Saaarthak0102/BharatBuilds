@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Chip, SampleDataBadge } from '@/components/ui/Chip';
@@ -14,23 +14,17 @@ import { AgentLogAccordion, ToolTraceItem } from '@/components/dashboard/AgentLo
 import { EmergencyFeelingHeavyModal } from '@/components/dashboard/EmergencyFeelingHeavyModal';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
-import { TodayResponse, CitizenProfile } from '@/lib/types';
+import { TodayResponse, CitizenProfile, WeatherResponse } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
-import { formatKolkataDate, formatKolkataTime } from '@/lib/date';
-import {
-  MOCK_WEATHER_CITIZEN,
-  FULL_WEATHER_CITIZEN,
-  MOCK_RECENT_REPORTS,
-  getCitizenRegionalImpact,
-  DID_YOU_KNOW_FACTS,
-} from '@/lib/mock/dashboardData';
+import { formatIST, timeIST, relativeAgo } from '@/lib/utils/date';
+import { getWard } from '@/lib/data/reference';
+import { WeatherSnapshot, DID_YOU_KNOW_FACTS } from '@/lib/mock/dashboardData';
 import {
   LuCamera,
   LuMapPin,
   LuBell,
   LuArrowRight,
   LuWind,
-  LuShieldAlert,
   LuHeartPulse,
   LuClock,
   LuFlame,
@@ -38,30 +32,104 @@ import {
   LuSparkles,
 } from 'react-icons/lu';
 
+function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: number | null): WeatherSnapshot {
+  if (!w) {
+    return {
+      temp: '—',
+      condition: '—',
+      icon: 'sun',
+      high: '—',
+      low: '—',
+      windSpeed: '—',
+      windDir: '—',
+      humidity: '—',
+      rainChance: '—',
+      uvIndex: '—',
+      sunset: '—',
+      feelsLike: '—',
+      visibility: '—',
+      aqi: aqi ?? undefined,
+      aqiLabel: aqi ? 'Moderate' : undefined,
+      hourly: [],
+    };
+  }
+
+  const windDirStr = typeof w.wind?.direction === 'number'
+    ? (() => {
+        const deg = w.wind.direction;
+        if (deg >= 337.5 || deg < 22.5) return 'N';
+        if (deg < 67.5) return 'NE';
+        if (deg < 112.5) return 'E';
+        if (deg < 157.5) return 'SE';
+        if (deg < 202.5) return 'S';
+        if (deg < 247.5) return 'SW';
+        if (deg < 292.5) return 'W';
+        return 'NW';
+      })()
+    : String(w.wind?.direction || '—');
+
+  const hourly = (w.hourly_summary_24h || w.hourly_summary || []).slice(0, 6).map((h) => ({
+    time: h.hour || '—',
+    temp: h.temperature != null ? String(Math.round(h.temperature)) : '—',
+    icon: ((h.condition || '').toLowerCase().includes('cloud') ? 'cloud-sun' : 'sun') as 'sun' | 'cloud-sun',
+    rainChance: h.rain_chance != null ? `${Math.round(h.rain_chance)}%` : undefined,
+  }));
+
+  const conditionLower = (w.condition || '').toLowerCase();
+  const icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon' = conditionLower.includes('cloud')
+    ? 'cloud-sun'
+    : conditionLower.includes('rain')
+    ? 'wind'
+    : conditionLower.includes('fog') || conditionLower.includes('haze')
+    ? 'haze'
+    : 'sun';
+
+  return {
+    temp: w.current != null ? String(Math.round(w.current)) : '—',
+    condition: w.condition || '—',
+    icon,
+    high: w.today_high != null ? String(Math.round(w.today_high)) : '—',
+    low: w.today_low != null ? String(Math.round(w.today_low)) : '—',
+    windSpeed: w.wind?.speed != null ? `${w.wind.speed} km/h` : '—',
+    windDir: windDirStr,
+    humidity: w.humidity != null ? `${w.humidity}%` : '—',
+    rainChance: w.rain_chance != null ? `${w.rain_chance}%` : '—',
+    uvIndex: w.uv != null ? String(w.uv) : '—',
+    sunset: w.sunset || '—',
+    feelsLike: (w as any).feels_like != null ? String((w as any).feels_like) : '—',
+    visibility: (w as any).visibility != null ? String((w as any).visibility) : '—',
+    aqi: w.aqi != null ? w.aqi : (aqi != null ? aqi : undefined),
+    aqiLabel: 'Moderate',
+    hourly,
+  };
+}
+
 export default function CitizenDashboard() {
   const { t } = useT();
   const [today, setToday] = useState<TodayResponse | null>(null);
   const [profile, setProfile] = useState<CitizenProfile | null>(null);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [reports, setReports] = useState<any[]>([]);
+  const [reportsCount, setReportsCount] = useState(0);
+  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [actionTakenCount, setActionTakenCount] = useState(0);
   const [isSampleReports, setIsSampleReports] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
+  const [extraToolTraces, setExtraToolTraces] = useState<ToolTraceItem[]>([]);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+  // Minute interval for live IST time
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Rotating "Did you know?" facts
   const [factIndex, setFactIndex] = useState(0);
   const [isFactPaused, setIsFactPaused] = useState(false);
   const [isFactFading, setIsFactFading] = useState(false);
-
-  // Tool traces for Citizen dashboard (AQI calculation + emergency actions)
-  const [citizenToolTraces, setCitizenToolTraces] = useState<ToolTraceItem[]>([
-    { tool: 'get_current_aqi', status: 'ok', latency_ms: 95 },
-    { tool: 'get_cpcb_station_data', status: 'ok', latency_ms: 130 },
-    { tool: 'get_dispersion_model', status: 'ok', latency_ms: 110 },
-    { tool: 'get_wind_drift_vectors', status: 'ok', latency_ms: 85 },
-  ]);
-
-  // Aggregated regional impact (derived from collective farmer actions)
-  const regionalImpact = getCitizenRegionalImpact();
 
   useEffect(() => {
     let mounted = true;
@@ -73,24 +141,43 @@ export default function CitizenDashboard() {
 
         const areaId = prof?.area_id || 'ward-east-delhi-001';
 
-        const [todayRes, reportsRes] = await Promise.allSettled([
+        const [todayRes, weatherRes, reportsRes] = await Promise.allSettled([
           apiClient.citizen.today(areaId),
-          apiClient.reports.get(),
+          apiClient.weather(areaId),
+          apiClient.reports.get({ mine: true }),
         ]);
 
         if (mounted) {
           if (todayRes.status === 'fulfilled') {
             setToday(todayRes.value.data);
           }
+          if (weatherRes.status === 'fulfilled') {
+            setWeather(weatherRes.value.data);
+          }
           if (reportsRes.status === 'fulfilled') {
             const rData = reportsRes.value.data;
             const fetchedReports = rData?.reports || [];
-            if (fetchedReports.length > 0) {
-              setReports(fetchedReports);
-              setIsSampleReports(Boolean(rData?.is_sample));
+            setReports(fetchedReports);
+            setIsSampleReports(Boolean(rData?.is_sample));
+            const counts = rData?.status_counts;
+            if (counts) {
+              setReportsCount(counts.TOTAL ?? fetchedReports.length);
+              setVerifiedCount(counts.ROUTED ?? 0);
+              setActionTakenCount(counts.RESOLVED ?? 0);
             } else {
-              setReports([]);
-              setIsSampleReports(false);
+              setReportsCount(fetchedReports.length);
+              setVerifiedCount(
+                fetchedReports.filter((r) => {
+                  const s = (r.status || '').toLowerCase();
+                  return s === 'verified' || s === 'routed';
+                }).length
+              );
+              setActionTakenCount(
+                fetchedReports.filter((r) => {
+                  const s = (r.status || '').toLowerCase();
+                  return s === 'action_taken' || s === 'action taken' || s === 'resolved';
+                }).length
+              );
             }
           }
         }
@@ -131,23 +218,17 @@ export default function CitizenDashboard() {
     return 'var(--cyan)';
   };
 
-  const areaName = profile?.area_name || today?.area_name || 'East Delhi';
-  const currentDateText = `Today, ${formatKolkataTime(new Date())}`;
+  const refWard = profile?.area_id ? getWard(profile.area_id) : undefined;
+  const wardName = refWard?.name || profile?.area_name || today?.area_name || 'East Delhi';
+  const currentDateText = currentTime
+    ? `${formatIST(currentTime, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeIST(currentTime)}`
+    : 'Today';
+  const weatherSnapshot = mapWeatherToSnapshot(weather, today?.aqi);
 
-  const reportsCount = reports.length;
-  const verifiedCount = reports.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return s === 'verified' || s === 'routed';
-  }).length;
-  const actionTakenCount = reports.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return s === 'action_taken' || s === 'action taken' || s === 'resolved';
-  }).length;
-
-  const reportListItems: RecentListItem[] = reports.map((r) => {
+  const reportListItems: RecentListItem[] = reports.map((r, idx) => {
     const rawTime = r.created_at || r.time;
     const formattedTime = rawTime
-      ? formatKolkataDate(rawTime, {
+      ? formatIST(rawTime, {
           month: 'short',
           day: 'numeric',
           hour: 'numeric',
@@ -159,10 +240,10 @@ export default function CitizenDashboard() {
       ? typeof r.location === 'object' && r.location.lat
         ? `${r.location.lat.toFixed(2)}°N, ${r.location.lng.toFixed(2)}°E`
         : String(r.location)
-      : areaName;
+      : wardName;
 
     return {
-      id: r.report_id || r.id || String(Math.random()),
+      id: r.report_id || r.id || `rpt-${idx}`,
       title: (r.category || 'Burning Report').replace(/_/g, ' '),
       subtitle: `${locText} • ${formattedTime}`,
       status: (r.status || 'Received').replace(/_/g, ' '),
@@ -171,8 +252,18 @@ export default function CitizenDashboard() {
     };
   });
 
+  const sourcesTraces: ToolTraceItem[] = (today?.sources || []).map((s) => ({
+    tool: s.name,
+    status: 'ok',
+    latency_ms: 0,
+    isSample: s.is_sample,
+    timeAgo: s.fetched_at ? relativeAgo(s.fetched_at) : undefined,
+  }));
+
+  const allTraces = [...sourcesTraces, ...extraToolTraces];
+
   const handleToolTracesUpdated = (newTraces: ToolTraceItem[]) => {
-    setCitizenToolTraces((prev) => [...prev, ...newTraces]);
+    setExtraToolTraces((prev) => [...prev, ...newTraces]);
   };
 
   return (
@@ -209,7 +300,7 @@ export default function CitizenDashboard() {
               
               <div className="relative z-10 flex flex-col items-center text-center py-8">
                 <Chip className="bg-[var(--cyan)]/10 text-[var(--cyan)] border-[var(--cyan)]/20 mb-8 px-4 py-1">
-                  {areaName}
+                  {wardName}
                 </Chip>
                 
                 {/* Huge AQI Display */}
@@ -221,17 +312,19 @@ export default function CitizenDashboard() {
                     className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-r-transparent transform -rotate-45"
                     style={{ borderColor: getAqiColor(today?.aqi_category) }}
                   />
-                  <span className="text-6xl font-serif italic text-[var(--text-hi)] leading-none mb-2">{today?.aqi}</span>
+                  <span className="text-6xl font-serif italic text-[var(--text-hi)] leading-none mb-2">
+                    {today?.aqi != null ? today.aqi : '—'}
+                  </span>
                   <span 
                     className="text-sm font-bold uppercase tracking-widest"
                     style={{ color: getAqiColor(today?.aqi_category) }}
                   >
-                    {today?.aqi_category}
+                    {today?.aqi_category || '—'}
                   </span>
                 </div>
                 
                 <p className="text-xl text-[var(--text-hi)] leading-relaxed max-w-sm mx-auto bg-[var(--bg-1)] p-4 rounded-2xl border border-[var(--border)]">
-                  {today?.advice}
+                  {today?.advice || '—'}
                 </p>
               </div>
             </GlassCard>
@@ -245,8 +338,8 @@ export default function CitizenDashboard() {
                   <h3 className="font-semibold text-[var(--text-hi)] mb-1">Wind & Forecast</h3>
                   <p className="text-sm text-[var(--text-mid)]">
                     {today?.wind
-                      ? `Winds are currently blowing from the ${today.wind.direction || 'northwest'} at ${today.wind.speed_kmh || 12}km/h${today.smoke_drift_note ? `, ${today.smoke_drift_note.toLowerCase()}` : '.'}`
-                      : 'Winds are currently blowing from the northwest at 12km/h, bringing residual smoke into the NCR basin.'}
+                      ? `Winds are currently blowing from the ${today.wind.direction} at ${today.wind.speed_kmh} km/h${today.smoke_drift_note ? `, ${today.smoke_drift_note.toLowerCase()}` : '.'}`
+                      : '—'}
                   </p>
                 </div>
               </div>
@@ -255,8 +348,8 @@ export default function CitizenDashboard() {
             {/* Mobile Agent Log: collapsible accordion */}
             <AgentLogAccordion
               accent="cyan"
-              toolTraces={citizenToolTraces}
-              title={t('citizen.agentTrace')}
+              toolTraces={allTraces}
+              title="Data sources checked"
             />
           </>
         )}
@@ -333,11 +426,11 @@ export default function CitizenDashboard() {
                 accent="cyan"
                 weatherPanel={
                   <WeatherPanel
-                    weather={FULL_WEATHER_CITIZEN}
+                    weather={weatherSnapshot}
                     title={t('citizen.today')}
-                    location={areaName}
+                    location={wardName}
                     dateText={currentDateText}
-                    isSample={today?.is_sample ?? true}
+                    isSample={weather?.is_sample ?? today?.is_sample ?? false}
                     accent="cyan"
                   />
                 }
@@ -353,13 +446,13 @@ export default function CitizenDashboard() {
                         style={{ borderColor: getAqiColor(today?.aqi_category) }}
                       />
                       <span className="text-[clamp(2.5rem,5vh,4rem)] font-serif italic text-[var(--text-hi)] leading-none mb-1">
-                        {today?.aqi || 185}
+                        {today?.aqi != null ? today.aqi : '—'}
                       </span>
                       <span
                         className="text-[clamp(0.6rem,1.2vh,0.85rem)] font-bold uppercase tracking-wider"
                         style={{ color: getAqiColor(today?.aqi_category) }}
                       >
-                        {today?.aqi_category || 'POOR'}
+                        {today?.aqi_category || '—'}
                       </span>
                     </div>
 
@@ -370,18 +463,17 @@ export default function CitizenDashboard() {
                         <span>Health & Exposure Advice</span>
                       </div>
                       <p className="text-sm lg:text-[clamp(0.85rem,1.8vh,1.1rem)] text-[var(--text-hi)] line-clamp-3 leading-snug lg:leading-relaxed">
-                        {today?.advice ||
-                          'Sensitive groups should reduce prolonged outdoor exertion. Everyone else should limit heavy outdoor activity.'}
+                        {today?.advice || '—'}
                       </p>
                       <div className="text-[11px] lg:text-[clamp(0.7rem,1.5vh,0.85rem)] text-[var(--text-low)] mt-2 lg:mt-3 flex items-center gap-2">
                         <span>
                           {today?.wind
                             ? `${today.wind.direction} wind ${today.wind.speed_kmh} km/h`
-                            : 'NW wind 12 km/h'}
+                            : '—'}
                         </span>
                         <span>•</span>
                         <span className="truncate">
-                          {today?.smoke_drift_note || 'Residual agricultural smoke in basin'}
+                          {today?.smoke_drift_note || '—'}
                         </span>
                       </div>
                     </div>
@@ -389,24 +481,24 @@ export default function CitizenDashboard() {
                 }
                 miniStatsGrid={
                   <div className="grid grid-cols-2 auto-rows-fr gap-3.5 h-full">
-                    {/* 1. Burning stopped today (Summed from collective farmer actions) */}
+                    {/* 1. Fires detected in last 24h */}
                     <MiniStatCard
                       label={t('citizen.burningStoppedToday')}
                       accent="emerald"
-                      badge="est."
+                      badge={today?.is_sample ? 'SAMPLE' : undefined}
                       icon={<LuFlame className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                      value={`${regionalImpact.fieldsNotBurnedToday} fields`}
-                      caption={`${regionalImpact.strawDivertedTodayTonnes} t stubble diverted`}
+                      value={today?.fires_24h != null ? `${today.fires_24h} fires` : '—'}
+                      caption="Detected in last 24 hours"
                     />
 
-                    {/* 2. Saved today (Same constants as farmer side) */}
+                    {/* 2. Reports submitted count */}
                     <MiniStatCard
                       label={t('citizen.savedToday')}
                       accent="cyan"
-                      badge="est."
+                      badge={isSampleReports ? 'SAMPLE' : undefined}
                       icon={<LuLeaf className="w-3.5 h-3.5 text-[var(--cyan)]" />}
-                      value={`${regionalImpact.pm25AvoidedKg.toLocaleString()} kg PM2.5`}
-                      caption={`${regionalImpact.co2AvoidedTonnes} t CO₂ kept out`}
+                      value={`${reportsCount} reports`}
+                      caption={`${verifiedCount} verified • ${actionTakenCount} action taken`}
                     />
 
                     {/* 3. Did you know? (Rotating facts with fade & pause on hover) */}
@@ -517,9 +609,7 @@ export default function CitizenDashboard() {
                       sublabel={
                         profile?.alert_threshold
                           ? `Threshold ${profile.alert_threshold} AQI`
-                          : profile?.alert_opt_in === false
-                          ? 'Alerts off'
-                          : 'Threshold 200 AQI'
+                          : 'Alerts off'
                       }
                       className="hover:border-[var(--cyan)]/50 p-4"
                     />
@@ -564,8 +654,8 @@ export default function CitizenDashboard() {
         <div className="w-full pt-4 pb-12">
           <AgentLogAccordion
             accent="cyan"
-            toolTraces={citizenToolTraces}
-            title={t('citizen.agentTrace')}
+            toolTraces={allTraces}
+            title="Data sources checked"
           />
         </div>
       </div>

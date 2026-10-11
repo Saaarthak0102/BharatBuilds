@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Chip } from "@/components/ui/Chip";
+import { Chip, SampleDataBadge } from "@/components/ui/Chip";
 import { LuMapPin, LuFlame } from "react-icons/lu";
 import { heroMock } from "@/lib/mock/heroMock";
 
@@ -12,6 +12,7 @@ export function PhoneSlideCitizen() {
           <LuMapPin className="w-4 h-4" />
           <span className="text-sm">South Delhi</span>
         </div>
+        <SampleDataBadge />
       </div>
 
       <div className="flex-1 flex flex-col justify-center items-center text-center">

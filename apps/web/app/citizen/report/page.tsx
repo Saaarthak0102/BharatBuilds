@@ -14,7 +14,7 @@ import {
   submitReport,
   getReport,
 } from '@/lib/api/client';
-import { mockWards } from '@/lib/mock/wards';
+import { wards, getWard } from '@/lib/data/reference';
 import { useT } from '@/lib/i18n/useT';
 import {
   LuCamera,
@@ -62,11 +62,11 @@ export default function CitizenReportPage() {
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
 
   const [coords, setCoords] = useState<LocationCoords>({
-    lat: mockWards[0].lat,
-    lng: mockWards[0].lng,
-    wardName: mockWards[0].name,
+    lat: wards[0].lat,
+    lng: wards[0].lng,
+    wardName: wards[0].name,
   });
-  const [selectedWardId, setSelectedWardId] = useState<string>(mockWards[0].ward_id);
+  const [selectedWardId, setSelectedWardId] = useState<string>(wards[0].ward_id);
   const [gpsStatus, setGpsStatus] = useState<'detecting' | 'detected' | 'failed'>('detecting');
 
   // Step 2: Upload & Classification State
@@ -198,7 +198,7 @@ export default function CitizenReportPage() {
   const handleManualWardSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const wardId = e.target.value;
     setSelectedWardId(wardId);
-    const ward = mockWards.find((w) => w.ward_id === wardId);
+    const ward = getWard(wardId);
     if (ward) {
       setCoords({
         lat: ward.lat,
@@ -545,7 +545,7 @@ export default function CitizenReportPage() {
                   onChange={handleManualWardSelect}
                   className="w-full py-2.5 px-3 bg-[var(--bg-1)] border border-[var(--border)] rounded-xl text-sm font-medium text-[var(--text-hi)] hover:border-amber-400/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-colors cursor-pointer"
                 >
-                  {mockWards.map((w) => (
+                  {wards.map((w) => (
                     <option key={w.ward_id} value={w.ward_id} className="bg-[var(--bg-0)]">
                       {w.name} ({w.zone}) - {w.lat.toFixed(2)}, {w.lng.toFixed(2)}
                     </option>

@@ -40,6 +40,11 @@ export const pa: typeof en = {
     troubleBreathing: 'ਸਾਹ ਲੈਣ ਵਿੱਚ ਤਕਲੀਫ਼? ਨੇੜਿਓਂ ਮਦਦ ਲਵੋ',
     recentReports: 'ਮੇਰੀਆਂ ਹਾਲੀਆ ਰਿਪੋਰਟਾਂ',
     call112: '112 / ਐਂਬੂਲੈਂਸ ਨੂੰ ਕਾਲ ਕਰੋ',
+    burningStoppedToday: 'ਪਿਛਲੇ 24 ਘੰਟਿਆਂ ਵਿੱਚ ਅੱਗ ਦੀਆਂ ਘਟਨਾਵਾਂ', // TODO: Human review (Punjabi)
+    firesDetected24h: 'ਪਿਛਲੇ 24 ਘੰਟਿਆਂ ਵਿੱਚ ਅੱਗ ਦੀਆਂ ਘਟਨਾਵਾਂ', // TODO: Human review (Punjabi)
+    savedToday: 'ਦਰਜ ਕੀਤੀਆਂ ਰਿਪੋਰਟਾਂ', // TODO: Human review (Punjabi)
+    reportsSubmitted: 'ਦਰਜ ਕੀਤੀਆਂ ਰਿਪੋਰਟਾਂ', // TODO: Human review (Punjabi)
+    bestTimeOutside: 'ਬਾਹਰ ਜਾਣ ਦਾ ਆਮ ਸਾਫ਼ ਸਮਾਂ (ਮੌਸਮੀ ਪੈਟਰਨ)', // TODO: Human review (Punjabi)
     // TODO: Human review (Punjabi translations for today and report screens)
     selectArea: 'ਵਾਰਡ / ਖੇਤਰ ਚੁਣੋ',
     freshnessLabel: 'ਅੱਪਡੇਟ ਕੀਤਾ {time}',

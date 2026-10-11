@@ -13,39 +13,114 @@ import { RecentList, RecentListItem } from '@/components/dashboard/RecentList';
 import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { apiClient } from '@/lib/api/client';
-import { PlanResult, FarmerProfile } from '@/lib/types';
+import { PlanResult, FarmerProfile, WeatherResponse, FarmerBookingsResponse } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
-import { formatKolkataDate } from '@/lib/date';
-import {
-  MOCK_WEATHER_FARMER,
-  FULL_WEATHER_FARMER,
-  MOCK_RECENT_BOOKINGS,
-  calculateEarnings,
-  calculateFarmerImpact,
-} from '@/lib/mock/dashboardData';
+import { formatIST, todayIST } from '@/lib/utils/date';
+import { getVillage } from '@/lib/data/reference';
+import { WeatherSnapshot } from '@/lib/mock/dashboardData';
 import {
   LuCalendar,
   LuTractor,
   LuMap,
   LuInfo,
   LuArrowRight,
-  LuSparkles,
   LuIndianRupee,
   LuShieldCheck,
   LuLeaf,
 } from 'react-icons/lu';
 
+function mapWeatherToSnapshot(w: WeatherResponse | null | undefined, aqi?: number | null): WeatherSnapshot {
+  if (!w) {
+    return {
+      temp: '—',
+      condition: '—',
+      icon: 'sun',
+      high: '—',
+      low: '—',
+      windSpeed: '—',
+      windDir: '—',
+      humidity: '—',
+      rainChance: '—',
+      uvIndex: '—',
+      sunset: '—',
+      feelsLike: '—',
+      visibility: '—',
+      aqi: aqi ?? undefined,
+      aqiLabel: aqi ? 'Moderate' : undefined,
+      hourly: [],
+    };
+  }
+
+  const windDirStr = typeof w.wind?.direction === 'number'
+    ? (() => {
+        const deg = w.wind.direction;
+        if (deg >= 337.5 || deg < 22.5) return 'N';
+        if (deg < 67.5) return 'NE';
+        if (deg < 112.5) return 'E';
+        if (deg < 157.5) return 'SE';
+        if (deg < 202.5) return 'S';
+        if (deg < 247.5) return 'SW';
+        if (deg < 292.5) return 'W';
+        return 'NW';
+      })()
+    : String(w.wind?.direction || '—');
+
+  const hourly = (w.hourly_summary_24h || w.hourly_summary || []).slice(0, 6).map((h) => ({
+    time: h.hour || '—',
+    temp: h.temperature != null ? String(Math.round(h.temperature)) : '—',
+    icon: ((h.condition || '').toLowerCase().includes('cloud') ? 'cloud-sun' : 'sun') as 'sun' | 'cloud-sun',
+    rainChance: h.rain_chance != null ? `${Math.round(h.rain_chance)}%` : undefined,
+  }));
+
+  const conditionLower = (w.condition || '').toLowerCase();
+  const icon: 'sun' | 'cloud-sun' | 'wind' | 'haze' | 'moon' = conditionLower.includes('cloud')
+    ? 'cloud-sun'
+    : conditionLower.includes('rain')
+    ? 'wind'
+    : conditionLower.includes('fog') || conditionLower.includes('haze')
+    ? 'haze'
+    : 'sun';
+
+  return {
+    temp: w.current != null ? String(Math.round(w.current)) : '—',
+    condition: w.condition || '—',
+    icon,
+    high: w.today_high != null ? String(Math.round(w.today_high)) : '—',
+    low: w.today_low != null ? String(Math.round(w.today_low)) : '—',
+    windSpeed: w.wind?.speed != null ? `${w.wind.speed} km/h` : '—',
+    windDir: windDirStr,
+    humidity: w.humidity != null ? `${w.humidity}%` : '—',
+    rainChance: w.rain_chance != null ? `${w.rain_chance}%` : '—',
+    uvIndex: w.uv != null ? String(w.uv) : '—',
+    sunset: w.sunset || '—',
+    feelsLike: (w as any).feels_like != null ? String((w as any).feels_like) : '—',
+    visibility: (w as any).visibility != null ? String((w as any).visibility) : '—',
+    aqi: w.aqi != null ? w.aqi : (aqi != null ? aqi : undefined),
+    aqiLabel: 'Moderate',
+    hourly,
+  };
+}
+
 export default function FarmerDashboard() {
   const { t } = useT();
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [bookingsData, setBookingsData] = useState<FarmerBookingsResponse | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [isSampleBookings, setIsSampleBookings] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentDateText, setCurrentDateText] = useState('');
 
-  // Computed data from actions-to-earnings and impact engine
-  const earningsData = calculateEarnings();
-  const impactData = calculateFarmerImpact();
+  useEffect(() => {
+    setCurrentDateText(
+      formatIST(todayIST(), {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+      })
+    );
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -59,12 +134,13 @@ export default function FarmerDashboard() {
         const cropStage = prof?.crop_stage || 'harvested';
         const lang = prof?.language || 'en';
 
-        const [planRes, bookingsRes] = await Promise.allSettled([
+        const [planRes, weatherRes, bookingsRes] = await Promise.allSettled([
           apiClient.farmer.plan({
             village_id: villageId,
             crop_stage: cropStage,
             language: lang,
           }),
+          apiClient.weather(villageId),
           apiClient.farmer.getBookings(),
         ]);
 
@@ -72,14 +148,17 @@ export default function FarmerDashboard() {
           if (planRes.status === 'fulfilled') {
             setPlan(planRes.value.data);
           }
+          if (weatherRes.status === 'fulfilled') {
+            setWeather(weatherRes.value.data);
+          }
           if (bookingsRes.status === 'fulfilled') {
             const bData = bookingsRes.value.data;
+            setBookingsData(bData);
             const fetchedBookings = bData?.bookings || [];
             if (fetchedBookings.length > 0) {
               setBookings(fetchedBookings);
               setIsSampleBookings(Boolean(bData?.is_sample));
             } else {
-              // If user has no bookings, start with clean real empty array
               setBookings([]);
               setIsSampleBookings(false);
             }
@@ -99,35 +178,42 @@ export default function FarmerDashboard() {
     };
   }, []);
 
-  const locationText = profile?.village_name
-    ? `${profile.village_name}, ${profile.district || 'Punjab'}`
-    : t('farmer.location');
-  const currentDateText = formatKolkataDate(new Date(), {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
+  const refVillage = profile?.village_id ? getVillage(profile.village_id) : undefined;
+  const villageName = profile?.village_name || refVillage?.name || 'Village';
+  const districtName = profile?.district || refVillage?.district || 'Punjab';
+  const locationText = `${villageName}, ${districtName}`;
 
-  const bookingsCount = bookings.length;
-  const completedCount = bookings.filter(
+  const weatherSnapshot = mapWeatherToSnapshot(weather, (plan as any)?.aqi ?? undefined);
+
+  const bookingsCount = bookingsData?.status_counts?.TOTAL ?? bookings.length;
+  const completedCount = bookingsData?.status_counts?.COMPLETED ?? bookings.filter(
     (b) => (b.status || '').toLowerCase() === 'completed'
   ).length;
-  const upcomingCount = bookings.filter((b) => {
-    const s = (b.status || '').toLowerCase();
-    return s === 'pending' || s === 'confirmed' || s === 'upcoming';
-  }).length;
+  const upcomingCount =
+    ((bookingsData?.status_counts?.CONFIRMED || 0) + (bookingsData?.status_counts?.PENDING || 0)) ||
+    bookings.filter((b) => {
+      const s = (b.status || '').toLowerCase();
+      return s === 'pending' || s === 'confirmed' || s === 'upcoming';
+    }).length;
 
-  const bookingListItems: RecentListItem[] = bookings.map((b) => ({
-    id: b.booking_id || b.id || String(Math.random()),
-    title: b.machine_type || b.machineName || 'Happy Seeder',
+  const impact = bookingsData?.impact;
+
+  const villageId = profile?.village_id || 'village-patiala-001';
+  const bookQuery = plan?.machine_option
+    ? `?village=${encodeURIComponent(villageId)}&date=${encodeURIComponent(plan.machine_option.date)}&machine=${encodeURIComponent(plan.machine_option.machine_type)}&slot_id=${encodeURIComponent(plan.machine_option.slot_id)}`
+    : '';
+
+  const bookingListItems: RecentListItem[] = bookings.map((b, idx) => ({
+    id: b.booking_id || b.id || `bk-${idx}`,
+    title: b.machine_type || b.machineName || 'Machine',
     subtitle: `${
       b.date
-        ? formatKolkataDate(b.date, { month: 'short', day: 'numeric' })
+        ? formatIST(b.date, { month: 'short', day: 'numeric' })
         : b.dateSlot || 'Slot booked'
     } • ${
       b.owner_label ||
       b.centre ||
-      (profile?.village_name ? `${profile.village_name} Centre` : 'Kisan Seva Kendra')
+      `${villageName} Centre`
     }`,
     status: b.status || 'CONFIRMED',
     statusType: (b.status || 'confirmed').toLowerCase() as any,
@@ -163,7 +249,7 @@ export default function FarmerDashboard() {
                 </Chip>
                 
                 <div className="text-4xl md:text-5xl font-serif italic text-[var(--text-hi)] mb-6">
-                  {plan?.best_day ? formatKolkataDate(plan.best_day, { weekday: 'long', month: 'short', day: 'numeric' }) : currentDateText}
+                  {plan?.best_day ? formatIST(plan.best_day, { weekday: 'long', month: 'short', day: 'numeric' }) : currentDateText}
                 </div>
                 
                 {plan?.sowing_window_status && plan.sowing_window_status !== 'inside' && (
@@ -185,7 +271,7 @@ export default function FarmerDashboard() {
                 )}
 
                 <p className="text-lg md:text-xl text-[var(--text-hi)] leading-relaxed bg-[var(--bg-1)] p-5 rounded-2xl border border-[var(--border)] mb-8">
-                  {plan?.reason_text}
+                  {plan?.reason_text || '—'}
                 </p>
                 
                 {plan?.machine_option ? (
@@ -200,19 +286,23 @@ export default function FarmerDashboard() {
                       <p className="text-sm text-[var(--text-mid)]">{plan.machine_option.owner_label}</p>
                     </div>
                   </div>
-                ) : plan?.straw_outlet_option ? (
+                ) : (
                   <div className="flex items-center gap-4 bg-[var(--bg-0)] p-4 rounded-xl border border-[var(--border)]">
-                    <div className="w-12 h-12 rounded-full bg-[var(--emerald)]/20 flex items-center justify-center text-[var(--emerald)] text-xl shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-[var(--amber)]/20 flex items-center justify-center text-[var(--amber)] text-xl shrink-0">
                       <LuMap />
                     </div>
                     <div>
                       <h3 className="font-semibold text-[var(--text-hi)]">
-                        {plan.straw_outlet_option.name} (Outlet)
+                        No machine free this week
                       </h3>
-                      <p className="text-sm text-[var(--text-mid)]">{plan.straw_outlet_option.contact_hint}</p>
+                      <p className="text-sm text-[var(--text-mid)]">
+                        {plan?.straw_outlet_option
+                          ? `Visit Straw Outlet: ${plan.straw_outlet_option.name}`
+                          : 'Check straw outlets for alternate disposal'}
+                      </p>
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
             </GlassCard>
 
@@ -230,7 +320,7 @@ export default function FarmerDashboard() {
           <h2 className="text-sm font-bold text-[var(--text-mid)] uppercase tracking-widest mb-6">Actions</h2>
           
           <div className="grid grid-cols-2 gap-4">
-            <Link href="/farmer/book" className="col-span-2 block">
+            <Link href={`/farmer/book${bookQuery}`} className="col-span-2 block">
               <GlassCard data-accent="emerald" className="group interactive-card hover:border-[var(--emerald)]/50 h-full">
                 <h3 className="font-bold text-[var(--emerald)] group-hover:text-[var(--accent-2)] flex items-center justify-between text-lg mb-2">
                   {t('farmer.bookMachine')}
@@ -285,11 +375,11 @@ export default function FarmerDashboard() {
                 accent="emerald"
                 weatherPanel={
                   <WeatherPanel
-                    weather={FULL_WEATHER_FARMER}
+                    weather={weatherSnapshot}
                     title={t('farmer.myField')}
                     location={locationText}
                     dateText={currentDateText}
-                    isSample={plan?.is_sample ?? true}
+                    isSample={weather?.is_sample ?? plan?.is_sample ?? false}
                     accent="emerald"
                   />
                 }
@@ -301,7 +391,7 @@ export default function FarmerDashboard() {
                         {t('farmer.bestDay')}
                       </span>
                       <span className="text-xs lg:text-sm text-[var(--text-low)] font-mono">
-                        Score {plan?.score != null ? plan.score : 82}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
+                        Score {plan?.score != null ? plan.score : '—'}/100{plan?.is_sample ? ' (SAMPLE)' : ''}
                       </span>
                     </div>
 
@@ -325,7 +415,7 @@ export default function FarmerDashboard() {
 
                     <div className="text-[clamp(2rem,4vh,3.5rem)] font-serif italic text-[var(--text-hi)] leading-tight my-2 lg:my-3">
                       {plan?.best_day
-                        ? formatKolkataDate(plan.best_day, {
+                        ? formatIST(plan.best_day, {
                             weekday: 'long',
                             month: 'short',
                             day: 'numeric',
@@ -334,8 +424,7 @@ export default function FarmerDashboard() {
                     </div>
 
                     <p className="text-sm lg:text-[clamp(0.9rem,2vh,1.25rem)] text-[var(--text-mid)] line-clamp-3 leading-relaxed mt-1 lg:mt-2">
-                      {plan?.reason_text ||
-                        "Low wind speeds mean smoke won't drift toward populated areas, and a Happy Seeder is available at Kisan Seva Kendra."}
+                      {plan?.reason_text || '—'}
                     </p>
                   </div>
                 }
@@ -345,16 +434,15 @@ export default function FarmerDashboard() {
                     <MiniStatCard
                       label={t('farmer.machineAvailability')}
                       accent="emerald"
-                      badge={plan?.is_sample ? 'SAMPLE' : (!plan?.machine_option ? 'est.' : undefined)}
+                      badge={plan?.machine_option?.is_sample ? 'SAMPLE' : undefined}
                       icon={<LuTractor className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                      value={plan?.machine_option?.machine_type || (plan?.straw_outlet_option ? 'Straw Outlet' : 'Happy Seeder')}
+                      value={plan?.machine_option?.machine_type || 'No machine free this week'}
                       caption={
-                        plan?.machine_option?.owner_label ||
-                        (plan?.straw_outlet_option
-                          ? plan.straw_outlet_option.name
-                          : profile?.village_name
-                          ? `${profile.village_name}, ${profile.district || 'Punjab'}`
-                          : 'Kisan Seva Kendra, Patiala')
+                        plan?.machine_option
+                          ? `${plan.machine_option.owner_label}${plan.machine_option.date ? ` • ${formatIST(plan.machine_option.date, { month: 'short', day: 'numeric' })}` : ''}`
+                          : plan?.straw_outlet_option
+                          ? `Straw outlet: ${plan.straw_outlet_option.name}`
+                          : 'Check straw outlets for alternate disposal'
                       }
                     />
 
@@ -364,8 +452,8 @@ export default function FarmerDashboard() {
                       accent="amber"
                       badge="est."
                       icon={<LuIndianRupee className="w-3.5 h-3.5 text-amber-400" />}
-                      value={earningsData.formattedTotal}
-                      caption={`from ${earningsData.actionCount} verified actions`}
+                      value={impact?.financial_savings_inr_est != null ? `₹${impact.financial_savings_inr_est.toLocaleString('en-IN')}` : '—'}
+                      caption={impact?.verified_actions_count != null ? `from ${impact.verified_actions_count} verified actions` : 'from verified actions'}
                     />
 
                     {/* 3. Burning Avoided */}
@@ -374,8 +462,8 @@ export default function FarmerDashboard() {
                       accent="emerald"
                       badge="est."
                       icon={<LuShieldCheck className="w-3.5 h-3.5 text-[var(--emerald)]" />}
-                      value={`${impactData.acresAvoided} acres`}
-                      caption={`${impactData.tonnesStrawDiverted} t straw diverted`}
+                      value={impact?.acres_avoided_est != null ? `${impact.acres_avoided_est} acres` : '—'}
+                      caption={impact?.straw_diverted_tonnes_est != null ? `${impact.straw_diverted_tonnes_est} t straw diverted` : 'straw diverted'}
                     />
 
                     {/* 4. Environment Saved */}
@@ -384,8 +472,8 @@ export default function FarmerDashboard() {
                       accent="blue"
                       badge="est."
                       icon={<LuLeaf className="w-3.5 h-3.5 text-cyan-400" />}
-                      value={`${impactData.pm25KgSaved} kg PM2.5`}
-                      caption={`${impactData.co2TonnesSaved} t CO₂ kept out`}
+                      value={impact?.pm25_kg_saved_est != null ? `${impact.pm25_kg_saved_est} kg PM2.5` : '—'}
+                      caption={impact?.co2_tonnes_saved_est != null ? `${impact.co2_tonnes_saved_est} t CO₂ kept out` : 'CO₂ kept out'}
                     />
                   </div>
                 }
@@ -418,26 +506,24 @@ export default function FarmerDashboard() {
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-semibold text-[var(--text-hi)] truncate">
-                            {plan?.machine_option?.machine_type || 'Happy Seeder'}
+                            {plan?.machine_option?.machine_type || 'No machine free this week'}
                           </h4>
                           <p className="text-[11px] sm:text-xs text-[var(--text-mid)] truncate mt-0.5">
                             {plan?.machine_option
                               ? `${plan.machine_option.owner_label} • ${
-                                  plan.best_day
-                                    ? formatKolkataDate(plan.best_day, {
-                                        weekday: 'short',
-                                        month: 'short',
-                                        day: 'numeric',
-                                      })
-                                    : 'Available'
+                                  formatIST(plan.machine_option.date || plan.best_day, {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })
                                 }${plan.machine_option.is_sample ? ' (SAMPLE)' : ''}`
-                              : `${
-                                  profile?.village_name ? `${profile.village_name} Hub` : 'Kisan Seva Kendra'
-                                } (4 km) • Tomorrow, 9 AM (est.)`}
+                              : plan?.straw_outlet_option
+                              ? `Consider Straw Outlet: ${plan.straw_outlet_option.name}`
+                              : 'Check straw outlets for alternate disposal'}
                           </p>
                         </div>
                       </div>
-                      <Link href="/farmer/book" className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center">
+                      <Link href={`/farmer/book${bookQuery}`} className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[var(--emerald)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#10b981] transition-colors shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center">
                         Book
                       </Link>
                     </div>
@@ -473,7 +559,7 @@ export default function FarmerDashboard() {
                       data-accent="emerald"
                       icon={<LuMap className="w-5 h-5 text-[var(--emerald)]" />}
                       label={t('farmer.strawOutlets')}
-                      sublabel={profile?.district ? `${profile.district} Hub` : 'Patiala Hub'}
+                      sublabel={`${districtName} Hub`}
                       className="hover:border-[var(--emerald)]/50 p-4"
                     />
                   </Link>

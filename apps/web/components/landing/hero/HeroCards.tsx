@@ -5,19 +5,34 @@ import { HeroFloatCard } from "./HeroFloatCard";
 import { Chip, SampleDataBadge } from "@/components/ui/Chip";
 import { LuChartBar, LuFlame, LuBell, LuMapPin, LuCamera, LuArrowUpRight, LuWind, LuCalendar } from "react-icons/lu";
 import { heroMock } from "@/lib/mock/heroMock";
+import { addDaysIST, formatIST } from "@/lib/utils/date";
 
 export function TLCard() {
+  const [dateInfo, setDateInfo] = React.useState({ weekday: '', day: '', month: '' });
+
+  React.useEffect(() => {
+    const targetDate = addDaysIST(2);
+    setDateInfo({
+      weekday: formatIST(targetDate, { weekday: 'short' }).toUpperCase(),
+      day: formatIST(targetDate, { day: 'numeric' }),
+      month: formatIST(targetDate, { month: 'short' }),
+    });
+  }, []);
+
   return (
     <HeroFloatCard accent="emerald" tilt="left" className="w-[200px]">
       <div className="absolute top-0 right-4 -translate-y-1/2 z-10">
         <Chip className="bg-[var(--emerald)] text-white font-bold border-none shadow-[0_4px_12px_rgba(16,185,129,0.3)] px-3 py-0.5 text-[10px]">
-          THU
+          {dateInfo.weekday || '—'}
         </Chip>
       </div>
-      <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-medium mb-1">Best day to clear</div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-[10px] text-[var(--text-mid)] uppercase tracking-wider font-medium">Best day to clear</div>
+        <SampleDataBadge className="text-[9px] py-0 px-1.5" />
+      </div>
       <div className="flex items-baseline gap-1.5">
-        <div className="font-serif italic text-5xl text-[var(--text-hi)] leading-none">16</div>
-        <div className="text-sm text-[var(--emerald)] uppercase font-bold tracking-wider">Sep</div>
+        <div className="font-serif italic text-5xl text-[var(--text-hi)] leading-none">{dateInfo.day || '—'}</div>
+        <div className="text-sm text-[var(--emerald)] uppercase font-bold tracking-wider">{dateInfo.month || '—'}</div>
       </div>
     </HeroFloatCard>
   );
@@ -63,7 +78,10 @@ export function TRCard() {
     <HeroFloatCard accent="cyan" tilt="right" className="w-[250px]">
       <div className="flex justify-between items-start mb-3">
         <div className="flex flex-col">
-          <div className="font-serif italic text-4xl text-[var(--text-hi)] leading-none">{heroMock.citizen.aqi}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-serif italic text-4xl text-[var(--text-hi)] leading-none">{heroMock.citizen.aqi}</div>
+            <SampleDataBadge className="text-[9px] py-0 px-1.5" />
+          </div>
           <div className="text-[10px] text-[var(--text-mid)] mt-1.5 uppercase tracking-wider">AQI today in your area</div>
         </div>
         <div className="w-10 h-10 bg-gradient-to-br from-[var(--cyan)]/20 to-transparent rounded-full flex items-center justify-center shrink-0">

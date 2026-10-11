@@ -188,6 +188,12 @@ export interface Freshness {
   label: string;
 }
 
+export interface DataSourceInfo {
+  name: string;
+  fetched_at: string;
+  is_sample: boolean;
+}
+
 export interface TodayResponse {
   area_id: string;
   area_name: string;
@@ -199,8 +205,70 @@ export interface TodayResponse {
   wind: WindInfo;
   smoke_drift_note: string;
   nearby_reports: NearbyReport[];
-  freshness: Freshness;
+  freshness: Freshness | string;
   is_sample: boolean;
+  fires_24h?: number;
+  sources?: DataSourceInfo[];
+}
+
+export interface WeatherHourlySummary {
+  hour: string;
+  temperature: number;
+  temperature_c?: number;
+  rain_chance: number;
+  condition: string;
+}
+
+export interface WeatherResponse {
+  location_id: string;
+  current: number;
+  today_high: number;
+  today_low: number;
+  rain_chance: number;
+  uv: number;
+  sunset: string;
+  wind: {
+    speed: number;
+    direction: number;
+  };
+  humidity: number;
+  condition: string;
+  hourly_summary_24h?: WeatherHourlySummary[];
+  hourly_summary?: WeatherHourlySummary[];
+  fetched_at: string;
+  is_sample: boolean;
+  aqi?: number;
+}
+
+export interface FarmerImpact {
+  acres_avoided_est?: number;
+  tonnes_straw_diverted_est?: number;
+  pm25_kg_saved_est?: number;
+  co2_tonnes_saved_est?: number;
+  financial_savings_inr_est?: number;
+  [key: string]: any;
+}
+
+export interface FarmerBooking {
+  booking_id: string;
+  user_id?: string;
+  machine_type: string;
+  owner_label: string;
+  village_id: string;
+  date: string;
+  status: string;
+  acres?: number;
+  is_sample?: boolean;
+  [key: string]: any;
+}
+
+export interface FarmerBookingsResponse {
+  bookings: FarmerBooking[];
+  counts_by_status?: Record<string, number>;
+  status_counts?: Record<string, number>;
+  acres?: number;
+  impact?: FarmerImpact;
+  is_sample?: boolean;
 }
 
 // ─── Map Layer Models ───────────────────────────────────
