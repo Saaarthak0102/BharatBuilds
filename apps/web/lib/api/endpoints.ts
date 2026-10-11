@@ -16,6 +16,8 @@ export const API_ENDPOINTS = {
     UPLOAD_URL: '/v1/reports/upload-url',
     SUBMIT: '/v1/reports',
     GET: '/v1/reports',
+    CLASSIFY: '/v1/reports/classify',
+    GET_BY_ID: (id: string) => `/v1/reports/${id}`,
   },
   SUBSCRIPTIONS: {
     CREATE: '/v1/subscriptions',
