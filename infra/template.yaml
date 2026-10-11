@@ -561,6 +561,12 @@ Resources:
             RestApiId: !Ref SaansApi
             Path: /v1/reports
             Method: GET
+        GetReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SaansApi
+            Path: /v1/reports/{report_id}
+            Method: GET
         PostReports:
           Type: Api
           Properties:

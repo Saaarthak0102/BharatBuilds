@@ -1,6 +1,7 @@
 """
 POST /v1/reports - Submit a burning report
-GET /v1/reports?bbox= - Get reports for the map
+GET /v1/reports - Get reports for the map
+GET /v1/reports/{report_id} - Get single report (owner only)
 DELETE /v1/reports/{id} - Delete a report
 """
 
@@ -32,6 +33,10 @@ def handler(event, context):
     if method == "POST":
         return _submit_report(event, context)
     elif method == "GET":
+        path_params = event.get("pathParameters") or {}
+        report_id = path_params.get("report_id") or path_params.get("id")
+        if report_id:
+            return _get_report_by_id(event, context, report_id)
         return _get_reports(event, context)
     elif method == "DELETE":
         return _delete_report(event, context)
@@ -77,6 +82,7 @@ def _submit_report(event, context):
         category = body.get("category")
         idempotency_key = body.get("idempotency_key")
         notes = body.get("notes", "")
+        confidence = body.get("confidence")
 
         if not photo_key or not location or not category:
             raise ValidationError("photo_key, location, and category are required")
@@ -117,6 +123,8 @@ def _submit_report(event, context):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "ttl": int(time.time()) + (30 * 24 * 60 * 60)
         }
+        if confidence is not None:
+            item["confidence"] = str(confidence)
         
         try:
             table.put_item(
@@ -225,6 +233,62 @@ def _get_reports(event, context):
         return success_response({"reports": SAMPLE_REPORTS, "is_sample": True}, correlation_id=correlation_id)
 
 
+def _get_report_by_id(event, context, report_id: str):
+    correlation_id = str(uuid.uuid4())
+    logger.info("get_report_by_id_request", correlation_id=correlation_id, report_id=report_id)
+
+    try:
+        user_id = get_claims(event).get("sub")
+        if not user_id:
+            raise ValidationError("Unauthorized")
+
+        table = _get_table(config.REPORTS_TABLE)
+        resp = table.get_item(Key={"report_id": report_id})
+        item = resp.get("Item")
+
+        # Owner only: user_id from claims must equal item's user_id, otherwise 404 (never 403, so ids are not guessable)
+        if not item or item.get("user_id") != user_id:
+            return error_response(404, "Report not found", correlation_id=correlation_id)
+
+        # Mask location precision: return geohash-rounded location only
+        g = item.get("geohash", "")
+        if not g and "lat" in item and "lng" in item:
+            try:
+                g = pgh.encode(float(item["lat"]), float(item["lng"]), precision=7)
+            except Exception:
+                g = ""
+        safe_geohash = g[:5] if len(g) >= 5 else g
+        lat, lng = pgh.decode(safe_geohash) if safe_geohash else (0.0, 0.0)
+
+        # Parse confidence as float if present
+        confidence_val = None
+        if "confidence" in item and item["confidence"] is not None:
+            try:
+                confidence_val = float(item["confidence"])
+            except (ValueError, TypeError):
+                confidence_val = None
+
+        report_data = {
+            "report_id": item.get("report_id"),
+            "category": item.get("category"),
+            "confidence": confidence_val,
+            "status": item.get("status", "received"),
+            "needs_review": bool(item.get("needs_review", False)),
+            "created_at": item.get("created_at"),
+            "location": {"lat": float(lat), "lng": float(lng)}
+        }
+
+        return success_response(report_data, correlation_id=correlation_id)
+
+    except ApiError as e:
+        return error_response(e.status_code, e.message, correlation_id=correlation_id)
+    except ValidationError as e:
+        return error_response(400, str(e), correlation_id=correlation_id)
+    except Exception as e:
+        logger.error("unexpected_error", error=str(e), correlation_id=correlation_id)
+        return error_response(500, "Internal server error", correlation_id=correlation_id)
+
+
 def _delete_report(event, context):
     correlation_id = str(uuid.uuid4())
     try:
@@ -232,7 +296,8 @@ def _delete_report(event, context):
         if not user_id:
             raise ValidationError("Unauthorized")
             
-        report_id = event.get("pathParameters", {}).get("id")
+        path_params = event.get("pathParameters") or {}
+        report_id = path_params.get("report_id") or path_params.get("id")
         if not report_id:
             raise ValidationError("report id is required")
             

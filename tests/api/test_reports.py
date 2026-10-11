@@ -200,3 +200,101 @@ def test_demo_advance_reports_safety_guards(monkeypatch):
         mock_boto.return_value.Table.return_value = mock_table
         advance_reports(force_demo=True)
         mock_table.scan.assert_called_once()
+
+
+def test_get_report_by_id_owner_can_read(moto_dynamodb, mock_event):
+    dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
+    table = dynamodb.create_table(
+        TableName=config.REPORTS_TABLE,
+        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "report_id", "AttributeType": "S"}
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+
+    table.put_item(Item={
+        "report_id": "rpt-owner-123",
+        "user_id": "user123",
+        "category": "crop_burning",
+        "confidence": "0.95",
+        "status": "received",
+        "needs_review": False,
+        "geohash": "ttp6xyz",
+        "lat": "28.12345",
+        "lng": "77.12345",
+        "photo_key": "reports/user123/img.jpg",
+        "notes": "private citizen notes",
+        "created_at": "2024-11-05T08:30:00Z"
+    })
+
+    mock_event["httpMethod"] = "GET"
+    mock_event["body"] = ""
+    mock_event["pathParameters"] = {"report_id": "rpt-owner-123"}
+    mock_event["requestContext"]["authorizer"]["claims"]["sub"] = "user123"
+
+    res = reports.handler(mock_event, None)
+    assert res["statusCode"] == 200
+
+    data = json.loads(res["body"])["data"]
+    assert data["report_id"] == "rpt-owner-123"
+    assert data["category"] == "crop_burning"
+    assert data["confidence"] == 0.95
+    assert data["status"] == "received"
+    assert data["needs_review"] is False
+    assert data["created_at"] == "2024-11-05T08:30:00Z"
+
+    # Rounded geohash location only
+    assert "location" in data
+    assert data["location"]["lat"] != 28.12345
+    assert data["location"]["lng"] != 77.12345
+
+    # Private fields must never leak
+    assert "user_id" not in data
+    assert "photo_key" not in data
+    assert "notes" not in data
+
+
+def test_get_report_by_id_another_user_gets_404(moto_dynamodb, mock_event):
+    dynamodb = boto3.resource("dynamodb", region_name=config.AWS_REGION)
+    table = dynamodb.create_table(
+        TableName=config.REPORTS_TABLE,
+        KeySchema=[{"AttributeName": "report_id", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "report_id", "AttributeType": "S"}
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+
+    table.put_item(Item={
+        "report_id": "rpt-owner-123",
+        "user_id": "user123",
+        "category": "crop_burning",
+        "confidence": "0.95",
+        "status": "received",
+        "needs_review": False,
+        "geohash": "ttp6xyz",
+        "lat": "28.12345",
+        "lng": "77.12345",
+        "photo_key": "reports/user123/img.jpg",
+        "created_at": "2024-11-05T08:30:00Z"
+    })
+
+    mock_event["httpMethod"] = "GET"
+    mock_event["body"] = ""
+    mock_event["pathParameters"] = {"report_id": "rpt-owner-123"}
+    # Another user signed in (sub != owner user123)
+    mock_event["requestContext"]["authorizer"]["claims"]["sub"] = "other_user_456"
+
+    res = reports.handler(mock_event, None)
+    # Must be 404, never 403, so ids are not guessable
+    assert res["statusCode"] == 404
+    body = json.loads(res["body"])
+    assert "error" in body
+    assert body["error"]["message"] == "Report not found"
+
+    # Non-existent ID also returns 404
+    mock_event["pathParameters"] = {"report_id": "rpt-does-not-exist"}
+    res_nonexistent = reports.handler(mock_event, None)
+    assert res_nonexistent["statusCode"] == 404
+
