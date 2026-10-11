@@ -12,6 +12,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 import pygeohash as pgh
 import os
+from botocore.exceptions import ClientError
 
 from api.common.responses import success_response, error_response
 from api.common.errors import ValidationError, ApiError
@@ -122,7 +123,9 @@ def _submit_report(event, context):
                 Item=item,
                 ConditionExpression="attribute_not_exists(report_id)"
             )
-        except boto3.client("dynamodb").exceptions.ConditionalCheckFailedException:
+        except (ClientError, boto3.client("dynamodb").exceptions.ConditionalCheckFailedException) as err:
+            if isinstance(err, ClientError) and err.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
+                raise
             # Idempotent - return the existing report if it's the same
             pass
             

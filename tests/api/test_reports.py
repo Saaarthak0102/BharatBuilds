@@ -173,3 +173,30 @@ def test_reports_privacy_get(moto_dynamodb, mock_event):
     
     # Location should be decoded from truncated geohash (not exact)
     assert rpt["location"]["lat"] != 28.12345
+
+
+def test_demo_advance_reports_safety_guards(monkeypatch):
+    from scripts.demo_advance_reports import advance_reports
+
+    # 1. Without safe demo configuration, must fail
+    monkeypatch.delenv("ALLOW_DEMO_MUTATION", raising=False)
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    monkeypatch.setenv("STAGE", "dev")
+    with pytest.raises(RuntimeError, match="Demo mutation requires an explicit safe demo configuration"):
+        advance_reports()
+
+    # 2. In production stage, must fail even if demo flag is set
+    monkeypatch.setenv("STAGE", "prod")
+    monkeypatch.setenv("ALLOW_DEMO_MUTATION", "true")
+    with pytest.raises(RuntimeError, match="cannot run in production environment"):
+        advance_reports()
+
+    # 3. With safe demo configuration in dev stage, should run safely
+    monkeypatch.setenv("STAGE", "dev")
+    monkeypatch.setenv("REPORTS_TABLE", "test-reports")
+    with mock.patch("boto3.resource") as mock_boto:
+        mock_table = mock.MagicMock()
+        mock_table.scan.return_value = {"Items": []}
+        mock_boto.return_value.Table.return_value = mock_table
+        advance_reports(force_demo=True)
+        mock_table.scan.assert_called_once()
