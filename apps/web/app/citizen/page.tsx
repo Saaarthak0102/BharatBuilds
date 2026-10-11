@@ -15,6 +15,7 @@ import { AgentLogAccordion, ToolTraceItem } from '@/components/dashboard/AgentLo
 import { EmergencyFeelingHeavyModal } from '@/components/dashboard/EmergencyFeelingHeavyModal';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ReportCardModal } from '@/components/citizen/ReportCardModal';
+import { AlertBanner } from '@/components/citizen/AlertBanner';
 import { apiClient } from '@/lib/api/client';
 import { TodayResponse, CitizenProfile, WeatherResponse, CommunityReport } from '@/lib/types';
 import { useT } from '@/lib/i18n/useT';
@@ -299,6 +300,8 @@ export default function CitizenDashboard() {
           <h1 className="text-2xl font-serif italic text-[var(--text-hi)]">{t('citizen.today')}</h1>
           {(isFallbackProfile || today?.is_sample) && <SampleDataBadge />}
         </div>
+
+        <AlertBanner currentAqi={today?.aqi} areaName={wardName} />
         
         {loading ? (
           <GlassCard className="h-64 flex items-center justify-center">
@@ -437,6 +440,9 @@ export default function CitizenDashboard() {
       {/* ==================================================================== */}
       <div className="hidden lg:flex lg:flex-col lg:min-h-0 w-full max-w-7xl mx-auto px-4 lg:px-6">
         <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] py-3 sm:py-3.5 lg:py-4 flex flex-col min-h-0">
+          <div className="mb-2 shrink-0">
+            <AlertBanner currentAqi={today?.aqi} areaName={wardName} />
+          </div>
           <div className="grid grid-cols-12 gap-4 xl:gap-5 flex-1 min-h-0">
             {/* ─── Left Column (7/12): Today Hero Card ─── */}
             <div className="col-span-7 h-full min-h-0 flex flex-col">
@@ -659,8 +665,13 @@ export default function CitizenDashboard() {
                                       <LuCamera className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="font-medium text-[var(--text-hi)] truncate leading-tight capitalize">
-                                        {r.category.replace(/_/g, ' ')}
+                                      <div className="font-medium text-[var(--text-hi)] truncate leading-tight capitalize flex items-center gap-1.5">
+                                        <span>{r.category.replace(/_/g, ' ')}</span>
+                                        {r.is_mine && (
+                                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--cyan)]/20 text-[var(--cyan)] border border-[var(--cyan)]/40 shrink-0">
+                                            You
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-[11px] text-[var(--text-low)] truncate leading-tight mt-0.5">
                                         {r.area_name || 'Delhi NCR'} • {relativeAgo(r.created_at)}
@@ -694,16 +705,12 @@ export default function CitizenDashboard() {
                       className="hover:border-[var(--violet)]/50 p-4"
                     />
                   </Link>
-                  <Link href="/profile" className="block h-full">
+                  <Link href="/citizen/alerts" className="block h-full">
                     <IconTile
                       data-accent="cyan"
                       icon={<LuBell className="w-5 h-5 text-[var(--cyan)]" />}
                       label={t('citizen.alertSettings')}
-                      sublabel={
-                        profile?.alert_threshold
-                          ? `Threshold ${profile.alert_threshold} AQI`
-                          : 'Alerts off'
-                      }
+                      sublabel="In-app alerts in the demo; email alerts need confirmation."
                       className="hover:border-[var(--cyan)]/50 p-4"
                     />
                   </Link>

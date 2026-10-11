@@ -9,8 +9,24 @@ import { TLCard, TLPill, BLCard, TRCard, BRCard } from "./hero/HeroCards";
 import { HeroCarouselMobile } from "./hero/HeroCarouselMobile";
 import { useGSAP, gsap } from "@/lib/motion/gsap";
 
+import { useRouter } from "next/navigation";
+import { startDemoSession } from "@/lib/demo";
+
 export function Hero() {
+  const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleDemoFarmer = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await startDemoSession('farmer');
+    router.push('/farmer');
+  };
+
+  const handleDemoCitizen = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await startDemoSession('citizen');
+    router.push('/citizen');
+  };
 
   useGSAP(() => {
     const isReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -111,8 +127,8 @@ export function Hero() {
           </p>
 
           <div className="hero-ctas flex flex-col sm:flex-row items-center justify-center gap-4">
-            <PillButton href="/signup?role=farmer" size="lg" variant="primary-silver">I'm a farmer</PillButton>
-            <PillButton href="/signup?role=citizen" size="lg" variant="glass">I'm a citizen</PillButton>
+            <PillButton onClick={handleDemoFarmer} href="/farmer" size="lg" variant="primary-silver">I&apos;m a farmer</PillButton>
+            <PillButton onClick={handleDemoCitizen} href="/citizen" size="lg" variant="glass">I&apos;m a citizen</PillButton>
           </div>
         </div>
 

@@ -38,6 +38,12 @@ def handler(event, context):
         if not photo_key.startswith(f"reports/{user_id}/"):
             raise ApiError(message="Access denied to this photo_key", status_code=403, code="Forbidden")
 
+        if not config.BEDROCK_ENABLED:
+            return error_response(
+                ApiError(message="Bedrock model is unavailable", status_code=503, code="MODEL_UNAVAILABLE"),
+                correlation_id=correlation_id
+            )
+
         s3 = boto3.client("s3", region_name=config.AWS_REGION)
         bucket = config.REPORTS_BUCKET
 

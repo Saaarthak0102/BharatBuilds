@@ -8,8 +8,16 @@ import boto3
 import contextvars
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ValidationError
-
-from strands.tools import tool
+try:
+    from strands.tools import tool
+except ImportError:
+    try:
+        from strands import tool
+    except ImportError:
+        def tool(func=None, **kwargs):
+            if func is None:
+                return lambda f: f
+            return func
 from ingest import cache
 from api.common.time import today_ist, now_ist
 from agents.planner.scoring import get_sowing_window_for_stage

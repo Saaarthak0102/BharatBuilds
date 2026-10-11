@@ -1,7 +1,7 @@
 # boto3 is provided by Lambda environment, do not add it
 
 pydantic>=2,<3
-strands-agents
+# strands-agents
 Pillow>=10.0.0
 pygeohash>=1.2.0
 

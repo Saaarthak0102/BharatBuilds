@@ -14,7 +14,14 @@ if (!fs.existsSync(targetDir)) {
   fs.mkdirSync(targetDir, { recursive: true });
 }
 
-const files = ['villages.json', 'wards.json'];
+const files = [
+  'villages.json',
+  'wards.json',
+  'machines.json',
+  'straw_outlets.json',
+  'sample_reports.json',
+  'sample_map.json',
+];
 
 for (const file of files) {
   const src = path.join(seedDir, file);

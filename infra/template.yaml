@@ -10,11 +10,20 @@ Parameters:
       - dev
       - staging
       - prod
+  BedrockEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable Bedrock AI models (set to false to run completely without Bedrock)
   BedrockModelId:
     Type: String
+    Default: "disabled"
     Description: Bedrock text model ID or Inference Profile ID
   BedrockVisionModelId:
     Type: String
+    Default: "disabled"
     Description: Bedrock vision model ID or Inference Profile ID
   AllowedOrigin:
     Type: String
@@ -44,6 +53,7 @@ Globals:
         REPORTS_BUCKET: !Ref ReportsBucket
         FIRMS_API_KEY_PARAM: !Sub /saans/${Stage}/firms-api-key
         OPENAQ_API_KEY_PARAM: !Sub /saans/${Stage}/openaq-api-key
+        BEDROCK_ENABLED: !Ref BedrockEnabled
         MODEL_PROVIDER: "bedrock"
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         BEDROCK_VISION_MODEL_ID: !Ref BedrockVisionModelId
@@ -61,6 +71,7 @@ Resources:
           - Effect: Allow
             Action: bedrock:InvokeModel
             Resource:
+              - "arn:aws:bedrock:*::foundation-model/*"
               - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
               - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
               - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockVisionModelId}
@@ -636,7 +647,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref SaansApi
-            Path: /v1/reports/{id}
+            Path: /v1/reports/{report_id}
             Method: DELETE
 
   TriageFunction:
@@ -660,7 +671,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref SaansApi
-            Path: /v1/reports/{id}/triage
+            Path: /v1/reports/{report_id}/triage
             Method: POST
 
   SubscriptionsFunction:

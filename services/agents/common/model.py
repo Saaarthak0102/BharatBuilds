@@ -7,6 +7,8 @@ def build_model():
     """
     Returns a configured model client based on MODEL_PROVIDER.
     """
+    if not config.BEDROCK_ENABLED:
+        return None
     provider = config.MODEL_PROVIDER.lower()
     if provider == "bedrock":
         try:
@@ -34,6 +36,10 @@ def structured_complete(schema: type, prompt: str, image: bytes = None):
     Call the model to return a structured output matching the provided Pydantic schema.
     Used by ALL model calls so no other file imports a provider SDK directly.
     """
+    bedrock_on = config.BEDROCK_ENABLED or (bool(config.BEDROCK_MODEL_ID) and config.BEDROCK_MODEL_ID != "disabled")
+    if not bedrock_on:
+        raise RuntimeError("Bedrock is disabled (BEDROCK_ENABLED=false)")
+
     client = boto3.client("bedrock-runtime", region_name=config.BEDROCK_REGION)
     
     tool_name = schema.__name__
@@ -70,8 +76,9 @@ def structured_complete(schema: type, prompt: str, image: bytes = None):
         
     messages = [{"role": "user", "content": content}]
     
+    model_id = config.BEDROCK_VISION_MODEL_ID if image else config.BEDROCK_MODEL_ID
     response = client.converse(
-        modelId=config.BEDROCK_MODEL_ID,
+        modelId=model_id,
         messages=messages,
         toolConfig=tool_config,
         inferenceConfig={"temperature": 0.1, "maxTokens": 1024}

@@ -34,9 +34,10 @@ class Config:
     COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "")
 
     # Bedrock
+    BEDROCK_ENABLED = os.environ.get("BEDROCK_ENABLED", "false").lower() in ("true", "1", "yes")
     MODEL_PROVIDER = os.environ.get("MODEL_PROVIDER", "bedrock")
-    BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "")
-    BEDROCK_VISION_MODEL_ID = os.environ.get("BEDROCK_VISION_MODEL_ID", "")
+    BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "disabled")
+    BEDROCK_VISION_MODEL_ID = os.environ.get("BEDROCK_VISION_MODEL_ID", "disabled")
     BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 
     # Agent limits

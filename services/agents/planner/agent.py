@@ -17,9 +17,14 @@ from pydantic import BaseModel, Field
 import contextvars
 from datetime import datetime, timezone, timedelta
 
-from strands import Agent
-from strands.models import BedrockModel
+try:
+    from strands import Agent
+    from strands.models import BedrockModel
+except ImportError:
+    Agent = None
+    BedrockModel = None
 
+from api.common.config import config
 from agents.common.runner import AgentRunner, StepLimitExceeded, AgentTimeout
 from agents.common.model import build_model, structured_complete
 from agents.planner.tools import (
@@ -55,27 +60,35 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
     w_end = end_date or (today_ist() + timedelta(days=6)).isoformat()
     
     try:
-        model = build_model()
-        agent = Agent(
-            model=model,
-            tools=[get_forecast, get_wind, get_fire_hotspots, get_sowing_window, find_machine_slots, find_straw_outlets],
-            system_prompt=open("services/agents/prompts/planner.md").read()
-        )
-        
         # Resolve village -> district in code (from seed)
         dist_name = resolve_district_from_village_or_name(village_id)
         firms_key = f"district-{dist_name.lower()}"
         outlets_district_id = dist_name.lower()
 
         date_instruction = f"{w_start} to {w_end}"
-            
-        prompt = (
-            f"Gather data for village_id='{village_id}'. "
-            f"Use district='{firms_key}'. "
-            f"Crop stage is '{crop_stage}'. "
-            f"Machine slots date range is {date_instruction}."
-        )
-        agent(prompt)
+
+        if not config.BEDROCK_ENABLED:
+            # Deterministic tool execution directly without model call
+            get_forecast(village_id, days=7)
+            get_wind(village_id, days=7)
+            get_fire_hotspots(firms_key)
+            get_sowing_window(crop_stage)
+            find_machine_slots(village_id, w_start, w_end)
+            find_straw_outlets(village_id)
+        else:
+            model = build_model()
+            agent = Agent(
+                model=model,
+                tools=[get_forecast, get_wind, get_fire_hotspots, get_sowing_window, find_machine_slots, find_straw_outlets],
+                system_prompt=open("services/agents/prompts/planner.md").read()
+            )
+            prompt = (
+                f"Gather data for village_id='{village_id}'. "
+                f"Use district='{firms_key}'. "
+                f"Crop stage is '{crop_stage}'. "
+                f"Machine slots date range is {date_instruction}."
+            )
+            agent(prompt)
         
         forecast_payload = payloads.get("get_forecast")
         fire_payload = payloads.get("get_fire_hotspots")
@@ -159,16 +172,24 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
         else:
             message_key = "ideal_day_found"
 
-        reason_prompt = (
-            f"Write a 2-3 sentence explanation for the farmer in {language}. "
-            f"The best day is {best['date']} with score {best['score']}. "
-            f"Sowing window status is {sw_status}. No ideal day flag is {no_ideal_day}. "
-            f"Machine option: {machine_opt}. Straw option: {straw_opt}. "
-            f"Top 3 ranked straw outlets: {ranked_outlets[:3]}. "
-            f"The ranking is determined deterministically by distance and residue match; only explain the choices."
-        )
-        
-        reasoning = structured_complete(AgentReasoning, reason_prompt)
+        if not config.BEDROCK_ENABLED:
+            reason_text = get_fallback_reason(language)
+            outcome = "fallback"
+            explanation_source = "template"
+        else:
+            reason_prompt = (
+                f"Write a 2-3 sentence explanation for the farmer in {language}. "
+                f"The best day is {best['date']} with score {best['score']}. "
+                f"Sowing window status is {sw_status}. No ideal day flag is {no_ideal_day}. "
+                f"Machine option: {machine_opt}. Straw option: {straw_opt}. "
+                f"Top 3 ranked straw outlets: {ranked_outlets[:3]}. "
+                f"The ranking is determined deterministically by distance and residue match; only explain the choices."
+            )
+            reasoning = structured_complete(AgentReasoning, reason_prompt)
+            reason_text = reasoning.reason_text
+            outcome = "success"
+            explanation_source = "agent"
+
         is_sample = any(t.get("is_sample") for t in trace) if trace else True
         
         result = PlanResult(
@@ -178,7 +199,7 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             machine_option=machine_opt,
             straw_outlet_option=straw_opt,
             straw_outlets=ranked_outlets[:3],
-            reason_text=reasoning.reason_text,
+            reason_text=reason_text,
             tool_trace=trace,
             seven_day_scores=[DayScore(date=d["date"], score=d["score"]) for d in scored],
             is_sample=is_sample,
@@ -188,8 +209,9 @@ def run_planner(village_id: str, crop_stage: str, language: str = "en", user_id:
             sowing_window_status=sw_status,
             no_ideal_day=no_ideal_day,
             message_key=message_key,
+            explanation_source=explanation_source,
         )
-        return result.model_dump(), "success"
+        return result.model_dump(), outcome
         
     except (Exception, StepLimitExceeded, AgentTimeout) as e:
         import logging
@@ -258,5 +280,6 @@ def _fallback_result(village_id: str, crop_stage: str, language: str, error: str
         sowing_window_status=sw_status,
         no_ideal_day=no_ideal_day,
         message_key=message_key,
+        explanation_source="template",
     ).model_dump()
     return result_dict, "fallback"

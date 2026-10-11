@@ -35,6 +35,7 @@ export default function FarmerFieldPlanner() {
     "Finalizing best day..."
   ];
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [visibleTraceCount, setVisibleTraceCount] = useState<number>(0);
 
   useEffect(() => {
     apiClient.farmer.getProfile().then(res => {
@@ -58,6 +59,34 @@ export default function FarmerFieldPlanner() {
       setCurrentStepIndex(0);
     }
   }, [isPlanning]);
+
+  // Reveal demo trace steps one-by-one over ~3 seconds; show real trace immediately
+  useEffect(() => {
+    if (!planResult?.tool_trace || planResult.tool_trace.length === 0) {
+      setVisibleTraceCount(0);
+      return;
+    }
+
+    if (!planResult.is_sample) {
+      setVisibleTraceCount(planResult.tool_trace.length);
+      return;
+    }
+
+    setVisibleTraceCount(1);
+    const total = planResult.tool_trace.length;
+    const stepDelay = Math.max(300, Math.floor(3000 / Math.max(1, total)));
+    const interval = setInterval(() => {
+      setVisibleTraceCount((prev) => {
+        if (prev >= total) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, stepDelay);
+
+    return () => clearInterval(interval);
+  }, [planResult]);
 
   const runPlan = async () => {
     if (isPlanning) return;
@@ -426,7 +455,7 @@ export default function FarmerFieldPlanner() {
 
              <AgentLogAccordion
                accent="emerald"
-               toolTraces={planResult.tool_trace || []}
+               toolTraces={(planResult.tool_trace || []).slice(0, visibleTraceCount)}
                title="Agent Trace"
              />
            </>

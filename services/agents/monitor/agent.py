@@ -16,7 +16,10 @@ import uuid
 import logging
 from pydantic import BaseModel, Field
 
-from strands import Agent
+try:
+    from strands import Agent
+except ImportError:
+    Agent = None
 from agents.common.runner import AgentRunner, write_agent_run
 from agents.common.model import build_model, structured_complete
 from api.common.config import config
@@ -105,12 +108,15 @@ class MonitorAgent:
                         f"Do not include medical advice. Just state the air quality and a brief fact from the data."
                     )
                     
-                    try:
-                        content = structured_complete(AlertContent, prompt)
-                        alert_text = content.alert_text
-                    except Exception as e:
-                        logger.error(f"Model failed to generate alert: {e}")
+                    if not config.BEDROCK_ENABLED:
                         alert_text = f"Air quality alert for {area_id}: AQI is {current_aqi}."
+                    else:
+                        try:
+                            content = structured_complete(AlertContent, prompt)
+                            alert_text = content.alert_text
+                        except Exception as e:
+                            logger.error(f"Model failed to generate alert: {e}")
+                            alert_text = f"Air quality alert for {area_id}: AQI is {current_aqi}."
                         
                     for target in targets:
                         user_id = target.get("user_id")

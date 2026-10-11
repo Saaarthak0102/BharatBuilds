@@ -366,12 +366,15 @@ export const cognitoClient: AuthClient = {
               key &&
               (key.startsWith('CognitoIdentityServiceProvider') ||
                 key === COGNITO_SESSION_STORAGE_KEY ||
-                key === 'saans_mock_session')
+                key === 'saans_mock_session' ||
+                key === 'saans_demo' ||
+                key.startsWith('saans_demo_'))
             ) {
               keysToRemove.push(key);
             }
           }
           keysToRemove.forEach((k) => localStorage.removeItem(k));
+          localStorage.removeItem('saans_demo');
           sessionStorage.removeItem('saans_signed_out');
         } catch (e) {
           console.warn('Failed clearing storage during logout:', e);

@@ -230,6 +230,7 @@ class PlanResult(BaseModel):
     sowing_window_status: Optional[str] = "inside"
     no_ideal_day: bool = False
     message_key: Optional[str] = None
+    explanation_source: Optional[str] = "agent"
 
 
 # --- Today response models ---

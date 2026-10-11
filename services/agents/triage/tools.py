@@ -1,8 +1,14 @@
 import time
 import contextvars
 from datetime import datetime, timezone, timedelta
-from strands import tool
 import boto3
+try:
+    from strands import tool
+except ImportError:
+    def tool(func=None, **kwargs):
+        if func is None:
+            return lambda f: f
+        return func
 from api.common.config import config
 from api.common.logging import get_logger
 

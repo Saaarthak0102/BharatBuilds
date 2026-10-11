@@ -49,6 +49,30 @@ npm run dev
    NEXT_PUBLIC_API_URL=<from SAM output>
    ```
 3. Seed DynamoDB tables with `data/seed/*.json`
+4. Create demo users (optional, enables live Cognito tokens for landing page demo buttons):
+   ```bash
+   python scripts/create_demo_users.py \
+     --farmer-email farmer.demo@saans.internal \
+     --farmer-password "FarmerDemo123!" \
+     --citizen-email citizen.demo@saans.internal \
+     --citizen-password "CitizenDemo123!"
+   ```
+   And add to `apps/web/.env.local`:
+   ```
+   NEXT_PUBLIC_DEMO_FARMER_EMAIL=farmer.demo@saans.internal
+   NEXT_PUBLIC_DEMO_FARMER_PASSWORD=FarmerDemo123!
+   NEXT_PUBLIC_DEMO_CITIZEN_EMAIL=citizen.demo@saans.internal
+   NEXT_PUBLIC_DEMO_CITIZEN_PASSWORD=CitizenDemo123!
+   ```
+
+## Demo Mode
+
+Clicking **"I'm a farmer"** or **"I'm a citizen"** on the landing hero starts Demo Mode (`localStorage.saans_demo = 'farmer' | 'citizen'`).
+- If `NEXT_PUBLIC_DEMO_*` variables are configured, Saans silently signs in via real AWS Cognito to execute live backend calls with real authentication.
+- If credentials are absent or the backend is offline, Saans transparently falls back to local fictional sessions (Gurpreet Singh in Rajpura, Ananya Sharma in Anand Vihar) and deterministic client mock responses tagged with `SAMPLE` badges.
+- Every API call follows a **Real First, Mock Fallback** strategy (6s timeout, 10s for planner) with automatic data validation.
+- Navigating to `/login` or `/signup`, or clicking Sign Out, immediately clears demo mode.
+
 
 ## Folder Map
 

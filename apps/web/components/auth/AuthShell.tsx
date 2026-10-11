@@ -1,9 +1,16 @@
-import { ReactNode } from 'react';
+'use client';
+
+import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import AccentGlow from '@/components/ui/AccentGlow';
 import { Logo } from '@/components/common/Logo';
+import { clearDemoSession } from '@/lib/demo';
 
 export function AuthShell({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    clearDemoSession();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--bg-0)] flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <AccentGlow />

@@ -22,6 +22,27 @@ import type {
   FarmerBooking,
   CommunityReport,
 } from '../types';
+import {
+  withDemoFallback,
+  isDemoMode,
+  getDemoRole,
+  generateDemoPlan,
+  getDemoMachineSlots,
+  bookDemoMachine,
+  getDemoFarmerBookings,
+  getRankedDemoStrawOutlets,
+  getDemoWeather,
+  getDemoToday,
+  getDemoCommunityReports,
+  classifyDemoPhoto,
+  submitDemoReport,
+  getDemoReport,
+  getDemoMapLayers,
+  demoStatusTracker,
+  getStoredUserReports,
+  getDemoReportStatus,
+} from '../demo';
+import { isWithinWeekIST } from '../utils/date';
 
 const API_MODE = process.env.NEXT_PUBLIC_API_MODE || 'mock';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -148,21 +169,31 @@ export async function uploadPhoto(
     await new Promise((resolve) => setTimeout(resolve, 350));
     return;
   }
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-    },
-    body: file,
-  });
-  if (!res.ok) {
-    throw new Error(`Photo upload failed with status ${res.status}`);
+  try {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Photo upload failed with status ${res.status}`);
+    }
+  } catch (err: any) {
+    if (isDemoMode()) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[DemoPhoto] Real S3 upload failed in demo mode; keeping photo locally:', err);
+      }
+      return;
+    }
+    throw err;
   }
 }
 
 export async function classifyPhoto(data: {
   photo_key: string;
-}): Promise<ApiResponse<{ category: string; confidence: number }>> {
+}): Promise<ApiResponse<{ category: string; confidence: number; label?: string }>> {
   if (isMockMode) {
     await new Promise((resolve) => setTimeout(resolve, 600));
     return {
@@ -172,9 +203,25 @@ export async function classifyPhoto(data: {
       },
     };
   }
-  return fetchWithAuth(API_ENDPOINTS.REPORTS.CLASSIFY, {
-    method: 'POST',
-    body: JSON.stringify(data),
+  return withDemoFallback({
+    featureKey: 'classifier',
+    realCall: () =>
+      fetchWithAuth(API_ENDPOINTS.REPORTS.CLASSIFY, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    demoCall: () => ({
+      data: classifyDemoPhoto(data.photo_key),
+    }),
+    validator: (d: any) => {
+      const c = d?.category || d?.data?.category;
+      return typeof c === 'string' && c.length > 0;
+    },
+    timeoutMs: 6000,
+    details: {
+      live: 'Vision AI',
+      demo: 'Demo classifier',
+    },
   });
 }
 
@@ -204,10 +251,24 @@ export async function submitReport(data: {
       },
     };
   }
-  return fetchWithAuth(API_ENDPOINTS.REPORTS.SUBMIT, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  if (!isDemoMode()) {
+    return fetchWithAuth(API_ENDPOINTS.REPORTS.SUBMIT, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+  try {
+    const res = await fetchWithAuth(API_ENDPOINTS.REPORTS.SUBMIT, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    demoStatusTracker.setSource('community_reports', 'live');
+    return res;
+  } catch (err) {
+    demoStatusTracker.setSource('community_reports', 'demo');
+    const demoSub = submitDemoReport(data);
+    return { data: demoSub };
+  }
 }
 
 export async function getReport(reportId: string): Promise<ApiResponse<{
@@ -236,7 +297,18 @@ export async function getReport(reportId: string): Promise<ApiResponse<{
       },
     };
   }
-  return fetchWithAuth(API_ENDPOINTS.REPORTS.GET_BY_ID(reportId));
+  return withDemoFallback({
+    featureKey: 'community_reports',
+    realCall: () => fetchWithAuth(API_ENDPOINTS.REPORTS.GET_BY_ID(reportId)),
+    demoCall: () => ({
+      data: getDemoReport(reportId),
+    }),
+    validator: (d: any) => {
+      const r = d?.report_id ? d : d?.data;
+      return Boolean(r?.report_id);
+    },
+    timeoutMs: 6000,
+  });
 }
 
 export async function getToday(areaId?: string): Promise<ApiResponse<TodayResponse>> {
@@ -251,9 +323,21 @@ export async function getToday(areaId?: string): Promise<ApiResponse<TodayRespon
     );
   }
   const id = areaId || 'ward-east-delhi-001';
-  return fetchWithAuth(
-    `${API_ENDPOINTS.CITIZEN.TODAY}?area=${encodeURIComponent(id)}&area_id=${encodeURIComponent(id)}`
-  );
+  return withDemoFallback({
+    featureKey: 'today',
+    realCall: () =>
+      fetchWithAuth(
+        `${API_ENDPOINTS.CITIZEN.TODAY}?area=${encodeURIComponent(id)}&area_id=${encodeURIComponent(id)}`
+      ),
+    demoCall: () => ({
+      data: getDemoToday(id),
+    }),
+    validator: (d: any) => {
+      const t = d?.aqi !== undefined ? d : d?.data;
+      return typeof t?.aqi === 'number';
+    },
+    timeoutMs: 6000,
+  });
 }
 
 export async function getWeather(locationId?: string): Promise<ApiResponse<WeatherResponse>> {
@@ -281,52 +365,65 @@ export async function getWeather(locationId?: string): Promise<ApiResponse<Weath
       })
     );
   }
-  return fetchWithAuth(`${API_ENDPOINTS.WEATHER}?location_id=${encodeURIComponent(id)}`);
+  return withDemoFallback({
+    featureKey: 'weather',
+    realCall: () => fetchWithAuth(`${API_ENDPOINTS.WEATHER}?location_id=${encodeURIComponent(id)}`),
+    demoCall: () => ({
+      data: getDemoWeather(id),
+    }),
+    validator: (d: any) => {
+      const w = d?.current !== undefined ? d : d?.data;
+      return typeof (w?.current ?? w?.temperature) === 'number';
+    },
+    timeoutMs: 6000,
+  });
 }
 
 export async function getFarmerBookings(): Promise<ApiResponse<FarmerBookingsResponse>> {
   if (isMockMode) {
     return new Promise((resolve) =>
       resolve({
-        data: {
-          bookings: [
-            {
-              booking_id: 'bk-101',
-              machine_type: 'Happy Seeder 7-Row',
-              owner_label: 'Kisan Seva Kendra, Patiala',
-              village_id: 'village-patiala-001',
-              date: '2026-10-12',
-              status: 'CONFIRMED',
-              acres: 5,
-              is_sample: true,
-            },
-            {
-              booking_id: 'bk-102',
-              machine_type: 'Super SMS Harvester',
-              owner_label: 'Punjab Agro Hub, Rajpura',
-              village_id: 'village-patiala-001',
-              date: '2026-10-15',
-              status: 'PENDING',
-              acres: 5,
-              is_sample: true,
-            },
-          ],
-          counts_by_status: { CONFIRMED: 1, PENDING: 1, COMPLETED: 0, CANCELLED: 0 },
-          status_counts: { CONFIRMED: 1, PENDING: 1, COMPLETED: 0, CANCELLED: 0 },
-          acres: 10,
-          impact: {
-            acres_avoided_est: 10,
-            tonnes_straw_diverted_est: 22,
-            pm25_kg_saved_est: 143,
-            co2_tonnes_saved_est: 32.1,
-            financial_savings_inr_est: 10000,
-          },
-          is_sample: true,
-        },
+        data: getDemoFarmerBookings(),
       })
     );
   }
-  return fetchWithAuth(API_ENDPOINTS.FARMER.BOOKINGS);
+  return withDemoFallback({
+    featureKey: 'machines',
+    realCall: async () => {
+      const real = await fetchWithAuth(API_ENDPOINTS.FARMER.BOOKINGS);
+      if (isDemoMode() && real?.data?.bookings) {
+        const demoData = getDemoFarmerBookings();
+        const existingIds = new Set(real.data.bookings.map((b: any) => b.booking_id));
+        const merged = [...real.data.bookings];
+        demoData.bookings.forEach((db) => {
+          if (!existingIds.has(db.booking_id)) {
+            merged.push(db);
+          }
+        });
+        return {
+          ...real,
+          data: {
+            ...real.data,
+            bookings: merged,
+            status_counts: {
+              ...real.data.status_counts,
+              COMPLETED: (real.data.status_counts?.COMPLETED || 0) + 2,
+            },
+            impact: real.data.impact || demoData.impact,
+          },
+        };
+      }
+      return real;
+    },
+    demoCall: () => ({
+      data: getDemoFarmerBookings(),
+    }),
+    validator: (d: any) => {
+      const b = d?.bookings || d?.data?.bookings;
+      return Array.isArray(b);
+    },
+    timeoutMs: 6000,
+  });
 }
 
 export async function getReports(
@@ -343,8 +440,8 @@ export async function getReports(
   if (qs) url += `?${qs}`;
 
   if (isMockMode) {
-    return new Promise((resolve) => {
-      const list = isMine ? mockReports.slice(0, 3) : mockReports;
+    const list = isMine ? mockReports.slice(0, 3) : mockReports;
+    return new Promise((resolve) =>
       resolve({
         data: {
           reports: list,
@@ -357,10 +454,43 @@ export async function getReports(
           },
           is_sample: true,
         },
-      });
-    });
+      })
+    );
   }
-  return fetchWithAuth(url);
+
+  return withDemoFallback({
+    featureKey: 'community_reports',
+    realCall: () => fetchWithAuth(url),
+    demoCall: () => {
+      const comm = getDemoCommunityReports();
+      const list: Report[] = comm.reports
+        .filter((r) => !isMine || r.is_mine)
+        .map((r) => ({
+          report_id: r.report_id,
+          category: r.category as any,
+          location: r.location || { lat: r.public_lat || 28.6692, lng: r.public_lng || 77.3055 },
+          status: r.status as any,
+          created_at: r.created_at,
+          is_sample: true,
+        }));
+      return {
+        data: {
+          reports: list,
+          status_counts: {
+            received: list.filter((r) => r.status === 'received').length,
+            routed: list.filter((r) => r.status === 'routed').length,
+            resolved: list.filter((r) => r.status === 'resolved').length,
+          },
+          is_sample: true,
+        },
+      };
+    },
+    validator: (d: any) => {
+      const r = d?.reports || d?.data?.reports;
+      return Array.isArray(r);
+    },
+    timeoutMs: 6000,
+  });
 }
 
 export async function getCommunityReports(options?: {
@@ -376,145 +506,48 @@ export async function getCommunityReports(options?: {
   const url = `${API_ENDPOINTS.REPORTS.GET}${qs ? `?${qs}` : ''}`;
 
   if (isMockMode) {
-    const mockFeed: CommunityReport[] = [
-      {
-        report_id: 'sample-report-001',
-        category: 'crop_burning',
-        status: 'resolved',
-        area_name: 'Rajpura Fields',
-        public_lat: 30.482,
-        public_lng: 76.594,
-        created_at: new Date(Date.now() - 42 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 3,
-        photo_url: '/sample-reports/r01.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-002',
-        category: 'crop_burning',
-        status: 'routed',
-        area_name: 'Khanna Outskirts',
-        public_lat: 30.704,
-        public_lng: 76.218,
-        created_at: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r02.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-003',
-        category: 'crop_burning',
-        status: 'received',
-        area_name: 'Karnal Farm Zone',
-        public_lat: 29.692,
-        public_lng: 76.985,
-        created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-        confidence_label: 'Needs verification',
-        needs_review: true,
-        merged_count: 1,
-        photo_url: '/sample-reports/r03.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-004',
-        category: 'garbage_burning',
-        status: 'routed',
-        area_name: 'Anand Vihar',
-        public_lat: 28.6698,
-        public_lng: 77.3061,
-        created_at: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r04.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-005',
-        category: 'garbage_burning',
-        status: 'resolved',
-        area_name: 'Laxmi Nagar',
-        public_lat: 28.6310,
-        public_lng: 77.2785,
-        created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r05.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-006',
-        category: 'cracker_burning',
-        status: 'received',
-        area_name: 'Civil Lines',
-        public_lat: 28.6820,
-        public_lng: 77.2230,
-        created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-        confidence_label: 'Moderate confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r06.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-007',
-        category: 'construction_dust',
-        status: 'routed',
-        area_name: 'Sector 62, Noida',
-        public_lat: 28.6258,
-        public_lng: 77.3645,
-        created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r07.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-      {
-        report_id: 'sample-report-008',
-        category: 'construction_dust',
-        status: 'resolved',
-        area_name: 'Hauz Khas',
-        public_lat: 28.5498,
-        public_lng: 77.2010,
-        created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-        confidence_label: 'High confidence',
-        needs_review: false,
-        merged_count: 1,
-        photo_url: '/sample-reports/r08.jpg',
-        is_sample: true,
-        is_mine: false,
-      },
-    ];
-
-    let filtered = mockFeed;
-    if (options?.category) {
-      filtered = filtered.filter((r) => r.category === options.category);
-    }
-    const limit = options?.limit || 20;
     return new Promise((resolve) =>
       resolve({
-        data: {
-          reports: filtered.slice(0, limit),
-          is_sample: true,
-        },
+        data: getDemoCommunityReports(options),
       })
     );
   }
 
-  return fetchWithAuth(url);
+  return withDemoFallback({
+    featureKey: 'community_reports',
+    realCall: async () => {
+      const real = await fetchWithAuth(url);
+      if (isDemoMode() && real?.data?.reports) {
+        const userReports = getStoredUserReports().map((ur) => ({
+          ...ur,
+          status: getDemoReportStatus(ur.timestampMs),
+          is_mine: true,
+          is_sample: true,
+        }));
+        const existingIds = new Set(real.data.reports.map((r: any) => r.report_id));
+        const merged = [
+          ...userReports.filter((ur) => !existingIds.has(ur.report_id)),
+          ...real.data.reports,
+        ];
+        return {
+          ...real,
+          data: {
+            ...real.data,
+            reports: merged,
+          },
+        };
+      }
+      return real;
+    },
+    demoCall: () => ({
+      data: getDemoCommunityReports(options),
+    }),
+    validator: (d: any) => {
+      const r = d?.reports || d?.data?.reports;
+      return Array.isArray(r);
+    },
+    timeoutMs: 6000,
+  });
 }
 
 // ─── Profile Mapping & Retrieval (Backend snake_case -> UI camelCase) ──────
@@ -594,8 +627,8 @@ export async function getProfile(): Promise<{
           village_id: 'village-patiala-001',
           village_name: 'Rajpura',
           district: 'Patiala',
-          land_size_acres: 10,
-          main_crop: 'wheat',
+          land_size_acres: 12,
+          main_crop: 'Paddy (Basmati)',
           crop_stage: 'harvested',
           has_own_machine: false,
           language: session?.language || 'pa',
@@ -617,6 +650,59 @@ export async function getProfile(): Promise<{
           has_kids: false,
           has_elderly: false,
           alert_threshold: 200,
+          created_at: new Date().toISOString(),
+          is_sample: true,
+        }),
+      };
+    }
+  }
+
+  if (isDemoMode()) {
+    try {
+      const res = await fetchWithAuth(API_ENDPOINTS.AUTH.GET_PROFILE);
+      if (res && res.data && res.data.name) {
+        demoStatusTracker.setSource('profile', 'live');
+        return { data: mapProfileResponse(res.data) };
+      }
+    } catch {
+      // Fall through to demo profile
+    }
+    demoStatusTracker.setSource('profile', 'demo');
+    const role = getDemoRole() || 'farmer';
+    if (role === 'farmer') {
+      return {
+        data: mapProfileResponse({
+          user_id: 'demo-farmer-sub-rajpura',
+          role: 'farmer',
+          name: 'Gurpreet Singh',
+          phone: '+919876543210',
+          village_id: 'village-patiala-001',
+          village_name: 'Rajpura',
+          district: 'Patiala',
+          land_size_acres: 12,
+          main_crop: 'Paddy (Basmati)',
+          crop_stage: 'harvested',
+          has_own_machine: false,
+          language: 'pa',
+          created_at: new Date().toISOString(),
+          is_sample: true,
+        }),
+      };
+    } else {
+      return {
+        data: mapProfileResponse({
+          user_id: 'demo-citizen-sub-anand-vihar',
+          role: 'citizen',
+          name: 'Ananya Sharma',
+          email: 'ananya.sharma@example.com',
+          phone: '+919876543211',
+          language: 'en',
+          area_id: 'ward-east-delhi-001',
+          area_name: 'Anand Vihar',
+          has_kids: false,
+          has_elderly: false,
+          alert_threshold: 200,
+          alert_opt_in: true,
           created_at: new Date().toISOString(),
           is_sample: true,
         }),
@@ -658,9 +744,28 @@ export const apiClient = {
           setTimeout(() => resolve({ data: mockData.mockFarmerPlan }), 1500)
         );
       }
-      return fetchWithAuth(API_ENDPOINTS.FARMER.PLAN, {
-        method: 'POST',
-        body: JSON.stringify(data),
+      return withDemoFallback({
+        featureKey: 'plan',
+        realCall: () =>
+          fetchWithAuth(API_ENDPOINTS.FARMER.PLAN, {
+            method: 'POST',
+            body: JSON.stringify(data),
+          }),
+        demoCall: () => ({
+          data: generateDemoPlan(data),
+        }),
+        validator: (resData: any) => {
+          const p = resData?.best_day ? resData : resData?.data;
+          if (!p) return false;
+          const bestValid = isWithinWeekIST(p.best_day);
+          const machineValid = !p.machine_option?.date || isWithinWeekIST(p.machine_option.date);
+          return Boolean(bestValid && machineValid && typeof p.score === 'number');
+        },
+        timeoutMs: 10000,
+        details: {
+          live: 'Live scorer',
+          demo: 'Live scorer + template explanation',
+        },
       });
     },
     book: async (data: {
@@ -698,10 +803,24 @@ export const apiClient = {
           )
         );
       }
-      return fetchWithAuth(API_ENDPOINTS.FARMER.BOOK, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      if (!isDemoMode()) {
+        return fetchWithAuth(API_ENDPOINTS.FARMER.BOOK, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+      }
+      try {
+        const realRes = await fetchWithAuth(API_ENDPOINTS.FARMER.BOOK, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+        demoStatusTracker.setSource('machines', 'live');
+        return realRes;
+      } catch (err: any) {
+        demoStatusTracker.setSource('machines', 'demo');
+        const demoBooked = bookDemoMachine(data);
+        return { data: demoBooked };
+      }
     },
     getBookings: getFarmerBookings,
     strawOutlets: async (districtId: string) => {
@@ -710,7 +829,21 @@ export const apiClient = {
           resolve({ data: { outlets: mockStrawOutlets, is_sample: true } })
         );
       }
-      return fetchWithAuth(`${API_ENDPOINTS.FARMER.STRAW_OUTLETS}?district=${districtId}`);
+      return withDemoFallback({
+        featureKey: 'straw_outlets',
+        realCall: () => fetchWithAuth(`${API_ENDPOINTS.FARMER.STRAW_OUTLETS}?district=${districtId}`),
+        demoCall: () => ({
+          data: {
+            outlets: getRankedDemoStrawOutlets(districtId),
+            is_sample: true,
+          },
+        }),
+        validator: (d: any) => {
+          const list = d?.outlets || d?.data?.outlets;
+          return Array.isArray(list) && list.length > 0;
+        },
+        timeoutMs: 6000,
+      });
     },
     getProfile: async (): Promise<ApiResponse<FarmerProfile>> => {
       const res = await getProfile();
@@ -766,7 +899,18 @@ export const apiClient = {
         return new Promise((resolve) => resolve({ data: mockMapLayers }));
       }
       const url = bbox ? `${API_ENDPOINTS.MAP.LAYERS}?bbox=${bbox}` : API_ENDPOINTS.MAP.LAYERS;
-      return fetchWithAuth(url);
+      return withDemoFallback({
+        featureKey: 'map_layers',
+        realCall: () => fetchWithAuth(url),
+        demoCall: () => ({
+          data: getDemoMapLayers(),
+        }),
+        validator: (d: any) => {
+          const m = d?.aqi_heatmap ? d : d?.data;
+          return Boolean(m?.aqi_heatmap?.features && m.aqi_heatmap.features.length > 0);
+        },
+        timeoutMs: 6000,
+      });
     },
   },
   weather: getWeather,

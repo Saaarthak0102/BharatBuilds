@@ -154,7 +154,7 @@ export default function CitizenReportPage() {
         img.onload = () => {
           let width = img.width;
           let height = img.height;
-          const maxLongEdge = 1280;
+          const maxLongEdge = 1024;
 
           if (width > maxLongEdge || height > maxLongEdge) {
             if (width > height) {
@@ -221,6 +221,8 @@ export default function CitizenReportPage() {
     setIsUploading(true);
     setUploadError(null);
 
+    let photoKey = '';
+
     try {
       // Step 2A: Get presigned URL
       const urlRes = await getUploadUrl({
@@ -229,58 +231,60 @@ export default function CitizenReportPage() {
       });
 
       const { upload_url, photo_key } = urlRes.data;
-      setUploadedPhotoKey(photo_key);
+      photoKey = photo_key;
 
       // Step 2B: PUT to presigned URL
       await uploadPhoto(upload_url, blob, 'image/jpeg');
-
-      // Step 2C: Classify via Vision AI
-      try {
-        const classifyRes = await classifyPhoto({ photo_key });
-        const { category, confidence: conf } = classifyRes.data;
-        setClassifiedCategory(category);
-
-        if (
-          category &&
-          ['crop_burning', 'garbage_burning', 'cracker_burning', 'construction_dust'].includes(
-            category
-          )
-        ) {
-          setSelectedCategory(category as CategoryKey);
-        }
-
-        if (category === 'none' || !conf || conf < 0.5) {
-          setConfidenceText(t('citizen.confidenceLow') || 'Not sure, please choose');
-        } else if (conf >= 0.8) {
-          setConfidenceText(
-            `${t('citizen.confidenceHigh') || 'High confidence'} (${Math.round(conf * 100)}%)`
-          );
-        } else {
-          setConfidenceText(
-            `${t('citizen.confidenceModerate') || 'Moderate confidence'} (${Math.round(conf * 100)}%)`
-          );
-        }
-      } catch (classifyErr) {
-        // Classify failure: allow manual selection and proceed gracefully
-        console.warn('Classify failed, falling back to manual selection', classifyErr);
-        setConfidenceText(t('citizen.confidenceLow') || 'Not sure, please choose');
-      }
-    } catch (err: any) {
-      if (err.message?.includes('401')) {
-        router.push('/login');
-        return;
-      }
-      if (err.message?.includes('403')) {
-        setUploadError('Access denied: incorrect user role or permission.');
-      } else if (err.message?.includes('413')) {
-        setUploadError('File size too large (maximum 5 MB).');
-      } else if (err.message?.includes('429')) {
-        setUploadError('Daily report rate limit reached. Please try again tomorrow.');
+    } catch (uploadErr) {
+      // S3 upload failed or offline demo: keep local photo preview (data URL or object URL)
+      if (photoPreview) {
+        photoKey = photoPreview;
       } else {
-        setUploadError(
-          err.message || (t('citizen.uploadFailedRetry') || 'Upload failed. Please try again.')
+        console.warn('S3 upload failed, but no photo preview available', uploadErr);
+      }
+    }
+
+    setUploadedPhotoKey(photoKey);
+
+    // Step 2C: Classify via Vision AI
+    try {
+      const classifyRes = await classifyPhoto({ photo_key: photoKey });
+      const { category, confidence: conf, label } = (classifyRes.data as any) || {};
+      setClassifiedCategory(category);
+
+      if (
+        category &&
+        ['crop_burning', 'garbage_burning', 'cracker_burning', 'construction_dust'].includes(
+          category
+        )
+      ) {
+        setSelectedCategory(category as CategoryKey);
+      }
+
+      const isDemoClassifier = label === 'Demo classifier' || Boolean((classifyRes.data as any)?.is_sample);
+      if (category === 'none' || !conf || conf < 0.5) {
+        setConfidenceText(
+          isDemoClassifier
+            ? 'Not sure, please choose (Demo classifier)'
+            : (t('citizen.confidenceLow') || 'Not sure, please choose')
+        );
+      } else if (conf >= 0.8) {
+        setConfidenceText(
+          isDemoClassifier
+            ? `Demo classifier (${Math.round(conf * 100)}%)`
+            : `${t('citizen.confidenceHigh') || 'High confidence'} (${Math.round(conf * 100)}%)`
+        );
+      } else {
+        setConfidenceText(
+          isDemoClassifier
+            ? `Demo classifier (${Math.round(conf * 100)}%)`
+            : `${t('citizen.confidenceModerate') || 'Moderate confidence'} (${Math.round(conf * 100)}%)`
         );
       }
+    } catch (classifyErr) {
+      // Classify failure: allow manual selection and proceed gracefully
+      console.warn('Classify failed, falling back to manual selection', classifyErr);
+      setConfidenceText(t('citizen.confidenceLow') || 'Not sure, please choose');
     } finally {
       setIsUploading(false);
     }

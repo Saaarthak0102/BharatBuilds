@@ -75,7 +75,8 @@ def _handle_api_request(event: Dict[str, Any], context: Any, correlation_id: str
         if not user_id:
             return error_response(401, "Unauthorized", correlation_id=correlation_id)
 
-        report_id = event.get("pathParameters", {}).get("id")
+        path_params = event.get("pathParameters") or {}
+        report_id = path_params.get("report_id") or path_params.get("id")
         if not report_id:
             return error_response(400, "Report ID is required", correlation_id=correlation_id)
 

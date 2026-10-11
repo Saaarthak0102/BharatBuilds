@@ -216,7 +216,7 @@ def test_triage_ownership_enforcement(moto_dynamodb):
     # Case A: unauthorized user456 (citizen) trying to triage user123's report -> 403
     foreign_event = {
         "httpMethod": "POST",
-        "pathParameters": {"id": "rpt-owner-test"},
+        "pathParameters": {"report_id": "rpt-owner-test"},
         "requestContext": {
             "authorizer": {
                 "claims": {
@@ -233,7 +233,7 @@ def test_triage_ownership_enforcement(moto_dynamodb):
     # Case B: report owner user123 triaging their own report -> 200
     owner_event = {
         "httpMethod": "POST",
-        "pathParameters": {"id": "rpt-owner-test"},
+        "pathParameters": {"report_id": "rpt-owner-test"},
         "requestContext": {
             "authorizer": {
                 "claims": {
@@ -249,10 +249,26 @@ def test_triage_ownership_enforcement(moto_dynamodb):
     assert data["report_id"] == "rpt-owner-test"
     assert data["status"] == "routed"
 
+    # Also verify fallback support for "id" parameter
+    owner_event_fallback = {
+        "httpMethod": "POST",
+        "pathParameters": {"id": "rpt-owner-test"},
+        "requestContext": {
+            "authorizer": {
+                "claims": {
+                    "sub": "user123",
+                    "custom:role": "citizen"
+                }
+            }
+        }
+    }
+    res_owner_fallback = reports_triage.handler(owner_event_fallback, None)
+    assert res_owner_fallback["statusCode"] == 200
+
     # Case C: official triaging any report -> 200
     official_event = {
         "httpMethod": "POST",
-        "pathParameters": {"id": "rpt-owner-test"},
+        "pathParameters": {"report_id": "rpt-owner-test"},
         "requestContext": {
             "authorizer": {
                 "claims": {
@@ -268,7 +284,7 @@ def test_triage_ownership_enforcement(moto_dynamodb):
     # Case D: unauthenticated caller -> 401
     unauth_event = {
         "httpMethod": "POST",
-        "pathParameters": {"id": "rpt-owner-test"},
+        "pathParameters": {"report_id": "rpt-owner-test"},
         "requestContext": {}
     }
     res_unauth = reports_triage.handler(unauth_event, None)
@@ -277,7 +293,7 @@ def test_triage_ownership_enforcement(moto_dynamodb):
     # Case E: non-existent report -> 404
     missing_event = {
         "httpMethod": "POST",
-        "pathParameters": {"id": "rpt-does-not-exist"},
+        "pathParameters": {"report_id": "rpt-does-not-exist"},
         "requestContext": {
             "authorizer": {
                 "claims": {

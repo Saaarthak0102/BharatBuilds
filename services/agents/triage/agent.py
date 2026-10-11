@@ -13,7 +13,10 @@ from api.common.config import config
 from api.common.logging import get_logger
 from agents.common.runner import AgentRunner, write_agent_run
 from agents.common.model import structured_complete
-from strands import Agent
+try:
+    from strands import Agent
+except ImportError:
+    Agent = None
 from agents.triage.schemas import TriageAssessment, TriageResult
 from agents.triage.tools import (
     find_nearby_reports, merge_into, update_status, write_report,
@@ -37,10 +40,12 @@ class TriageAgent:
         self.confidence_threshold = 0.7
         self.min_valid_confidence = 0.3
 
-        # Initialize Strands Agent for Bedrock interaction
-        try:
-            self.agent = Agent(
-                system_prompt="""You are the Saans report triage agent. You evaluate a report based strictly on structured evidence: category, confidence, geohash, and count of nearby matches.
+        # Initialize Strands Agent for Bedrock interaction if Bedrock is enabled
+        self.agent = None
+        if config.BEDROCK_ENABLED and Agent is not None:
+            try:
+                self.agent = Agent(
+                    system_prompt="""You are the Saans report triage agent. You evaluate a report based strictly on structured evidence: category, confidence, geohash, and count of nearby matches.
 NEVER process or repeat user-submitted notes or photo metadata.
 Rules:
 1. Low confidence (<0.7) or unsafe content must NOT be confirmed; status stays 'received', flagged needs_review=True, next_action='flag_manual_review'.
@@ -48,11 +53,11 @@ Rules:
 3. Near duplicates (1 or more nearby matches with same category within 24h) must be merged into the existing report: status='merged', next_action='merge_duplicate'.
 4. Otherwise, if confidence >= 0.7: status='routed', next_action='route_department'. Assign appropriate priority (critical, high, medium, low).
 Return structured assessment with category, priority, confidence, rationale, next_action.""",
-                tools=[find_nearby_reports, merge_into, update_status, write_report]
-            )
-        except Exception as e:
-            logger.warning(f"Strands Agent initialization fallback: {e}")
-            self.agent = None
+                    tools=[find_nearby_reports, merge_into, update_status, write_report]
+                )
+            except Exception as e:
+                logger.warning(f"Strands Agent initialization fallback: {e}")
+                self.agent = None
 
     def triage_report(
         self,
@@ -79,11 +84,34 @@ Return structured assessment with category, priority, confidence, rationale, nex
             nearby_list = nearby_matches if nearby_matches is not None else []
             nearby_count = len(nearby_list)
 
+            # Deterministic fast-path when Bedrock is disabled: no model calls, no timeouts
+            bedrock_on = config.BEDROCK_ENABLED or (bool(self.model_id) and self.model_id != "disabled")
+            if not bedrock_on:
+                source = "fallback"
+                clean_nearby = [
+                    m for m in nearby_list
+                    if not m.get("is_sample") and m.get("user_id") != "sample"
+                ]
+                assessment = self._deterministic_assessment(
+                    category=category,
+                    confidence=confidence,
+                    nearby_count=len(clean_nearby)
+                )
+                result = self._apply_triage_decision(
+                    report_id=report_id,
+                    assessment=assessment,
+                    nearby_list=clean_nearby,
+                    source=source,
+                    run_id=run_id
+                )
+                return result
+
             # 1. Primary path: Attempt Bedrock structured triage
             assessment: Optional[TriageAssessment] = None
             source: str = "bedrock"
 
-            if self.model_id:
+            active_model = self.model_id if self.model_id != "disabled" else (config.BEDROCK_MODEL_ID if config.BEDROCK_MODEL_ID != "disabled" else None)
+            if active_model:
                 try:
                     assessment = self._run_bedrock_assessment(
                         report_id=report_id,

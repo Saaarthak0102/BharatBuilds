@@ -238,6 +238,7 @@ export interface TodayResponse {
   is_sample: boolean;
   fires_24h?: number;
   sources?: DataSourceInfo[];
+  sources_checked?: Array<{ name: string; source: string }>;
 }
 
 export interface WeatherHourlySummary {

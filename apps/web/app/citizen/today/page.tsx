@@ -7,6 +7,8 @@ import { PillButton } from '@/components/ui/PillButton';
 import { WeatherStrip } from '@/components/dashboard/WeatherStrip';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { CitizenBackHeader } from '@/components/citizen/CitizenBackHeader';
+import { AlertBanner } from '@/components/citizen/AlertBanner';
+import { AgentLogAccordion } from '@/components/dashboard/AgentLogAccordion';
 import { getToday, getProfile, getWeather } from '@/lib/api/client';
 import { wards, getWard } from '@/lib/data/reference';
 import { TodayResponse, WeatherResponse, AQICategory } from '@/lib/types';
@@ -267,6 +269,11 @@ export default function CitizenTodayPage() {
       />
 
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 mt-6 space-y-6">
+        <AlertBanner
+          currentAqi={today?.aqi}
+          areaName={selectedWard ? `${selectedWard.name}, ${selectedWard.zone}` : today?.area_name}
+        />
+
         {/* Top Control Bar: Ward Picker & Freshness / Offline Cache status */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -450,6 +457,23 @@ export default function CitizenTodayPage() {
                     })}
                   </div>
                 </GlassCard>
+              )}
+
+              {/* Data sources checked: live / demo sources */}
+              {today.sources && today.sources.length > 0 && (
+                <div className="pt-2">
+                  <AgentLogAccordion
+                    accent="cyan"
+                    title="Data sources checked"
+                    toolTraces={today.sources.map((s) => ({
+                      tool: s.name,
+                      status: 'ok',
+                      latency_ms: 0,
+                      isSample: s.is_sample,
+                      timeAgo: s.fetched_at ? relativeAgo(s.fetched_at) : undefined,
+                    }))}
+                  />
+                </div>
               )}
             </div>
           </>

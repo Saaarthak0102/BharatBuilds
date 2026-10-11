@@ -97,12 +97,15 @@ export function mockLogout(): void {
       if (
         key &&
         (key.startsWith('CognitoIdentityServiceProvider') ||
-          key.includes('session'))
+          key.includes('session') ||
+          key === 'saans_demo' ||
+          key.startsWith('saans_demo_'))
       ) {
         keysToRemove.push(key);
       }
     }
     keysToRemove.forEach((k) => localStorage.removeItem(k));
+    localStorage.removeItem('saans_demo');
     sessionStorage.removeItem('saans_signed_out');
   }
 }
