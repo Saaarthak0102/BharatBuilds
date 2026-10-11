@@ -9,12 +9,39 @@ import { PillButton } from "@/components/ui/PillButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Chip, SampleDataBadge } from "@/components/ui/Chip";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { LuArrowRight, LuCircleCheck } from "react-icons/lu";
+import { LuArrowRight, LuCircleCheck, LuArrowUpRight } from "react-icons/lu";
 import { Hero } from "@/components/landing/Hero";
 import { useGSAP, gsap } from "@/lib/motion/gsap";
+import dynamic from "next/dynamic";
+import { apiClient } from "@/lib/api/client";
+import { MapLayers } from "@/lib/types";
+
+const MapView = dynamic(
+  () => import("@/components/map/MapView").then((mod) => mod.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-[#0A1017]">
+        <div className="w-8 h-8 border-3 border-[var(--violet)]/20 border-t-[var(--violet)] rounded-full animate-spin" />
+      </div>
+    ),
+  }
+);
 
 export default function LandingPage() {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const [mapLayers, setMapLayers] = React.useState<MapLayers | null>(null);
+
+  React.useEffect(() => {
+    apiClient.map
+      .layers()
+      .then((res) => {
+        setMapLayers(res.data);
+      })
+      .catch((err) => {
+        console.warn("Failed to load map layers on landing page", err);
+      });
+  }, []);
 
   useGSAP(() => {
     const sections = gsap.utils.toArray<HTMLElement>(".reveal-section");
@@ -135,20 +162,26 @@ export default function LandingPage() {
 
         {/* MAP PREVIEW & TRANSPARENCY */}
         <section className="reveal-section max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8 items-center">
-          <GlassCard data-accent="violet" className="aspect-video p-0 overflow-hidden relative group">
-            {/* Mock map image using CSS pattern for now */}
-            <div className="absolute inset-0 bg-[#0A1017]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-[#0A1017]/50 to-[#0A1017]" />
-            <div className="absolute top-[30%] left-[40%] w-64 h-64 bg-red-500/10 blur-[50px] rounded-full" />
-            <div className="absolute top-[60%] right-[30%] w-48 h-48 bg-cyan-500/10 blur-[40px] rounded-full" />
-            <div className="absolute inset-4 pointer-events-none flex flex-col justify-between">
-              <div className="flex gap-2">
-                <Chip className="bg-black/50 backdrop-blur border border-white/10">AQI Layer</Chip>
-                <Chip className="bg-black/50 backdrop-blur border border-white/10">Fires</Chip>
+          <GlassCard data-accent="violet" className="aspect-video p-0 overflow-hidden relative group rounded-2xl border border-[var(--border)] shadow-2xl">
+            {mapLayers ? (
+              <div className="w-full h-full relative z-0">
+                <MapView layers={mapLayers} />
               </div>
-              <div className="flex justify-end">
-                <PillButton href="/map" variant="glass" size="md" className="pointer-events-auto">Open full map</PillButton>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-[#0A1017]">
+                <div className="w-8 h-8 border-3 border-[var(--violet)]/20 border-t-[var(--violet)] rounded-full animate-spin" />
               </div>
+            )}
+
+            {/* Simple button with written text and arrow to click to expand */}
+            <div className="absolute bottom-4 right-4 z-30 pointer-events-auto">
+              <Link
+                href="/map"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-1)]/90 hover:bg-[var(--bg-2)] text-[var(--text-hi)] border border-[var(--border)] text-xs font-semibold backdrop-blur-md shadow-xl transition-all hover:scale-105 interactive-tactile"
+              >
+                <span>Expand Map</span>
+                <LuArrowUpRight className="w-4 h-4 text-[var(--violet)]" />
+              </Link>
             </div>
           </GlassCard>
 
