@@ -142,7 +142,12 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
         // ignore
       }
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        const currentPath = window.location.pathname;
+        const isPublicRoute =
+          currentPath === '/' || currentPath === '/login' || currentPath === '/signup';
+        if (!isPublicRoute) {
+          window.location.replace('/login');
+        }
       }
     }
     const err = new Error(responseData?.error?.message || responseData?.message || 'Unauthorized');
@@ -916,14 +921,17 @@ export const apiClient = {
     communityReports: getCommunityReports,
   },
   map: {
-    layers: async (bbox?: string): Promise<ApiResponse<MapLayers>> => {
+    layers: async (bbox?: string, options?: { signal?: AbortSignal }): Promise<ApiResponse<MapLayers>> => {
       if (isMockMode) {
         return new Promise((resolve) => resolve({ data: mockMapLayers }));
+      }
+      if (!authClient.isAuthenticated() && !isDemoMode()) {
+        return { data: getDemoMapLayers() };
       }
       const url = bbox ? `${API_ENDPOINTS.MAP.LAYERS}?bbox=${bbox}` : API_ENDPOINTS.MAP.LAYERS;
       return withDemoFallback({
         featureKey: 'map_layers',
-        realCall: () => fetchWithAuth(url),
+        realCall: () => fetchWithAuth(url, { signal: options?.signal }),
         demoCall: () => ({
           data: getDemoMapLayers(),
         }),

@@ -15,6 +15,8 @@ import { useGSAP, gsap } from "@/lib/motion/gsap";
 import dynamic from "next/dynamic";
 import { apiClient } from "@/lib/api/client";
 import { MapLayers } from "@/lib/types";
+import { isDemoMode, clearDemoSession } from "@/lib/demo";
+import { authClient } from "@/lib/auth/authClient";
 
 const MapView = dynamic(
   () => import("@/components/map/MapView").then((mod) => mod.MapView),
@@ -33,14 +35,37 @@ export default function LandingPage() {
   const [mapLayers, setMapLayers] = React.useState<MapLayers | null>(null);
 
   React.useEffect(() => {
+    if (isDemoMode()) {
+      clearDemoSession();
+      authClient.logout().catch(() => {});
+    }
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && isDemoMode()) {
+        clearDemoSession();
+        authClient.logout().catch(() => {});
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    const controller = new AbortController();
+
     apiClient.map
-      .layers()
+      .layers(undefined, { signal: controller.signal })
       .then((res) => {
         setMapLayers(res.data);
       })
       .catch((err) => {
+        if (err?.name === "AbortError") {
+          return;
+        }
         console.warn("Failed to load map layers on landing page", err);
       });
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      controller.abort();
+    };
   }, []);
 
   useGSAP(() => {
