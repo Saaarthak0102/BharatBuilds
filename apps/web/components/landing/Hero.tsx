@@ -45,7 +45,7 @@ export function Hero() {
         duration: 0.8,
         stagger: 0.15
       })
-      .from(".hero-subtitle, .hero-ctas", {
+      .from(".hero-subtitle, .hero-ctas, .hero-demo-hint", {
         y: 15,
         opacity: 0,
         duration: 0.6,
@@ -129,6 +129,26 @@ export function Hero() {
           <div className="hero-ctas flex flex-col sm:flex-row items-center justify-center gap-4">
             <PillButton onClick={handleDemoFarmer} href="/farmer" size="lg" variant="primary-silver">I&apos;m a farmer</PillButton>
             <PillButton onClick={handleDemoCitizen} href="/citizen" size="lg" variant="glass">I&apos;m a citizen</PillButton>
+          </div>
+
+          {/* Quick Demo Helper Line */}
+          <div className="hero-demo-hint mt-6 flex items-center justify-center gap-1.5 text-center select-none">
+            <svg
+              className="w-4 h-4 text-blue-400 shrink-0 animate-bounce motion-reduce:animate-none drop-shadow-[0_0_8px_rgba(96,165,250,0.6)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="19" x2="12" y2="5" />
+              <polyline points="5 12 12 5 19 12" />
+            </svg>
+            <span className="font-serif italic text-lg sm:text-xl text-blue-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]">
+              Click here for a quick demo
+            </span>
           </div>
         </div>
 
