@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { useSession } from '@/lib/auth/useSession';
+import { useSession, getIsSigningOut } from '@/lib/auth/useSession';
 import { getDashboardPath } from '@/lib/auth/roleRedirect';
 
 export default function CitizenLayout({ children }: { children: ReactNode }) {
@@ -13,6 +13,9 @@ export default function CitizenLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated || !session) {
+        if (getIsSigningOut()) {
+          return;
+        }
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("saans_signed_out");
         }

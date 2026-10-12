@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { LuUser, LuLogOut } from 'react-icons/lu';
-import { useSession } from '@/lib/auth/useSession';
+import { useSession, setSigningOut } from '@/lib/auth/useSession';
 import { getProfile } from '@/lib/api/client';
 import { ProfileCard } from './ProfileCard';
 import type { Role } from '@/lib/types';
@@ -89,11 +89,12 @@ export function ProfileMenu({ role }: ProfileMenuProps) {
     const safetyTimer = setTimeout(() => {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('saans_signed_out');
-        window.location.assign('/');
+        window.location.replace('/');
       }
     }, 3000);
 
     try {
+      setSigningOut(true);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('saans_signed_out', 'true');
       }
@@ -101,14 +102,14 @@ export function ProfileMenu({ role }: ProfileMenuProps) {
       clearTimeout(safetyTimer);
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('saans_signed_out');
-        window.location.assign('/');
+        window.location.replace('/');
       }
     } catch (err) {
       clearTimeout(safetyTimer);
       console.warn('Sign out operation encountered an error, forcing navigation:', err);
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('saans_signed_out');
-        window.location.assign('/');
+        window.location.replace('/');
       }
     } finally {
       setIsLoggingOut(false);

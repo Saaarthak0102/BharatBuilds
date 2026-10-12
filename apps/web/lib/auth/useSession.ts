@@ -8,6 +8,16 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Session } from '@/lib/types';
 import { authClient, type SignupData, type LoginData } from './authClient';
 
+let isSigningOut = false;
+
+export function setSigningOut(value: boolean): void {
+  isSigningOut = value;
+}
+
+export function getIsSigningOut(): boolean {
+  return isSigningOut;
+}
+
 export function useSession() {
   const [session, setSession] = useState<Session | null>(() => authClient.getSession());
   const [loading, setLoading] = useState(true);

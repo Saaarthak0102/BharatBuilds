@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/api/client";
 import { MapLayers } from "@/lib/types";
 import { isDemoMode, clearDemoSession } from "@/lib/demo";
 import { authClient } from "@/lib/auth/authClient";
+import { setSigningOut } from "@/lib/auth/useSession";
 
 const MapView = dynamic(
   () => import("@/components/map/MapView").then((mod) => mod.MapView),
@@ -35,12 +36,15 @@ export default function LandingPage() {
   const [mapLayers, setMapLayers] = React.useState<MapLayers | null>(null);
 
   React.useEffect(() => {
+    setSigningOut(false);
+
     if (isDemoMode()) {
       clearDemoSession();
       authClient.logout().catch(() => {});
     }
 
     const handlePageShow = (event: PageTransitionEvent) => {
+      setSigningOut(false);
       if (event.persisted && isDemoMode()) {
         clearDemoSession();
         authClient.logout().catch(() => {});
